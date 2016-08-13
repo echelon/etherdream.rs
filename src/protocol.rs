@@ -4,13 +4,113 @@
 // website, and the copyright belongs to Jacob Potter.
 // See http://ether-dream.com/protocol.html
 
-use byteorder::ByteOrder;
+use byteorder::BigEndian;
 use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
 use byteorder::WriteBytesExt;
 use std::io::Cursor;
 use std::io::Error;
 use std::io::ErrorKind;
+
+pub const COMMAND_BEGIN : u8   = 0x62;
+pub const COMMAND_DATA : u8    = 0x64;
+pub const COMMAND_PING : u8    = 0x3F;
+pub const COMMAND_PREPARE : u8 = 0x70;
+
+pub const RESPONSE_ACK: u8         = 0x61;
+pub const RESPONSE_BUFFER_FULL: u8 = 0x46;
+pub const RESPONSE_INVALID_CMD: u8 = 0x49;
+pub const RESPONSE_STOP: u8        = 0x21;
+
+/** A 22-byte response the DAC sends to any command. */
+#[derive(Clone, Copy, Debug)]
+pub struct DacResponse {
+  /// One byte ACK/NACK.
+  pub acknowledgement: AckCode,
+
+  /// One byte repeat of the command that was received.
+  /// For sanity checking.
+  pub command : CommandCode,
+
+  /// 20-byte status of the dac.
+  pub status : DacStatus,
+}
+
+impl DacResponse {
+  /// Parse a DacResponse from a 22 byte body.
+  pub fn parse(bytes: &[u8]) -> Result<DacResponse, Error> {
+    if bytes.len() != 22 {
+      return Err(Error::new(ErrorKind::InvalidInput,
+                            "Input is not 22 bytes."));
+    }
+    match DacStatus::parse(&bytes[2..]) {
+      Err(e) => Err(e),
+      Ok(status) => {
+        Ok(DacResponse {
+          acknowledgement: AckCode::parse(bytes[0]),
+          command: CommandCode::parse(bytes[1]),
+          status: status,
+        })
+      },
+    }
+  }
+
+  /// Whether or not the response is a successful ACK.
+  pub fn is_ack(&self) -> bool {
+    self.acknowledgement.is_ack()
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum AckCode {
+  Ack,
+  NackBufferFull,
+  NackInvalid,
+  NackStop,
+  NackUnknown { code: u8 },
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum CommandCode {
+  Begin,
+  Data,
+  Ping,
+  Prepare,
+  CommandUnknown { code: u8 },
+  // TODO: More.
+}
+
+impl AckCode {
+  pub fn parse(byte: u8) -> AckCode {
+    match byte {
+      RESPONSE_ACK => AckCode::Ack,
+      RESPONSE_BUFFER_FULL => AckCode::NackBufferFull,
+      RESPONSE_INVALID_CMD => AckCode::NackInvalid,
+      RESPONSE_STOP => AckCode::NackStop,
+      _ => AckCode::NackUnknown { code: byte },
+    }
+  }
+
+  /// Whether or not the code is a successful ACK.
+  pub fn is_ack(&self) -> bool {
+    match *self {
+      AckCode::Ack => true,
+      _ => false,
+    }
+  }
+}
+
+impl CommandCode {
+  pub fn parse(byte: u8) -> CommandCode {
+    match byte {
+      COMMAND_BEGIN => CommandCode::Begin,
+      COMMAND_DATA => CommandCode::Data,
+      COMMAND_PING => CommandCode::Ping,
+      COMMAND_PREPARE => CommandCode::Prepare,
+      _ => CommandCode::CommandUnknown { code: byte },
+    }
+  }
+}
 
 /** The DAC periodically sends state information. */
 #[derive(Clone, Copy, Debug)]
@@ -225,6 +325,80 @@ impl Broadcast {
     v.write_u16::<LittleEndian>(self.buffer_capacity).unwrap();
     v.write_u32::<LittleEndian>(self.max_point_rate).unwrap();
     v.extend(self.status.serialize());
+    v
+  }
+}
+
+// TODO: Docs, tests.
+/** Begin command. */
+#[derive(Clone, Copy, Debug)]
+pub struct Begin {
+  /// Unused.
+  pub low_water_mark: u16,
+  /// Point Rate.
+  pub point_rate : u32,
+}
+
+impl Begin {
+  pub fn serialize(&self) -> Vec<u8> {
+    let mut v = Vec::new();
+    v.push(COMMAND_BEGIN); // 'b'
+    v.write_u16::<LittleEndian>(self.low_water_mark).unwrap();
+    v.write_u32::<LittleEndian>(self.point_rate).unwrap();
+    v
+  }
+}
+
+// TODO: Docs, tests.
+/** 18-byte point data for a single point. */
+#[derive(Clone, Copy, Debug)]
+pub struct Point {
+  pub control: u16,
+  pub x: i16,
+  pub y: i16,
+  pub i: u16,
+  pub r: u16,
+  pub g: u16,
+  pub b: u16,
+  pub u1: u16,
+  pub u2: u16,
+}
+
+impl Point {
+  /// Point CTOR.
+  pub fn xy_rgb(x: i16, y: i16, r: u16, g: u16, b: u16) -> Point {
+    Point {
+      control: 0,
+      x: x,
+      y: y,
+      i: 0,
+      r: r,
+      g: g,
+      b: b,
+      u1: 0,
+      u2: 0,
+    }
+  }
+
+  /// Point CTOR.
+  pub fn xy_binary(x: i16, y: i16, on: bool) -> Point {
+    let c = if on { 255 } else { 0 };
+    Point::xy_rgb(x, y, c, c, c)
+  }
+
+  pub fn serialize(&self) -> Vec<u8> {
+    let mut v = Vec::new();
+    // TODO/FIXME: This should be LittleEndian. Why does this work only
+    // as BigEndian!?
+    v.write_u16::<BigEndian>(self.control).unwrap();
+    v.write_i16::<BigEndian>(self.x).unwrap();
+    v.write_i16::<BigEndian>(self.y).unwrap();
+    v.write_u16::<BigEndian>(self.i).unwrap();
+    v.write_u16::<BigEndian>(self.r).unwrap();
+    v.write_u16::<BigEndian>(self.g).unwrap();
+    v.write_u16::<BigEndian>(self.b).unwrap();
+    v.write_u16::<BigEndian>(self.u1).unwrap();
+    v.write_u16::<BigEndian>(self.u2).unwrap();
     v
   }
 }

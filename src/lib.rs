@@ -4,6 +4,7 @@
 extern crate byteorder;
 extern crate net2;
 
+pub mod dac;
 pub mod network;
 pub mod protocol;
 

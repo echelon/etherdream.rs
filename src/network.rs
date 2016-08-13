@@ -3,7 +3,6 @@
 
 use net2::UdpBuilder;
 use std::io::Error;
-use std::io::ErrorKind;
 use std::net::IpAddr;
 
 use protocol::Broadcast;
