@@ -229,6 +229,7 @@ impl Broadcast {
   }
 }
 
+// TODO: Docs, tests.
 /** Begin command. */
 #[derive(Clone, Copy, Debug)]
 pub struct Begin {
@@ -244,6 +245,57 @@ impl Begin {
     v.push(0x63); // 'b'
     v.write_u16::<LittleEndian>(self.low_water_mark).unwrap();
     v.write_u32::<LittleEndian>(self.point_rate).unwrap();
+    v
+  }
+}
+
+// TODO: Docs, tests.
+#[derive(Clone, Copy, Debug)]
+pub struct Point {
+  pub control: u16,
+  pub x: i16,
+  pub y: i16,
+  pub i: u16,
+  pub r: u16,
+  pub g: u16,
+  pub b: u16,
+  pub u1: u16,
+  pub u2: u16,
+}
+
+impl Point { 
+  /// Point CTOR.
+  pub fn xy_rgb(x: i16, y: i16, r: u16, g: u16, b: u16) -> Point {
+    Point { 
+      control: 0,
+      x: x,
+      y: y,
+      i: 0,
+      r: r,
+      g: g, 
+      b: b,
+      u1: 0,
+      u2: 0,
+    }
+  }
+
+  /// Point CTOR.
+  pub fn xy_binary(x: i16, y: i16, on: bool) -> Point {
+    let c = if on { 255 } else { 0 };
+    Point::xy_rgb(x, y, c, c, c)
+  }
+
+  pub fn serialize(&self) -> Vec<u8> {
+    let mut v = Vec::new();
+    v.write_u16::<LittleEndian>(self.control).unwrap();
+    v.write_i16::<LittleEndian>(self.x).unwrap();
+    v.write_i16::<LittleEndian>(self.y).unwrap();
+    v.write_u16::<LittleEndian>(self.i).unwrap();
+    v.write_u16::<LittleEndian>(self.r).unwrap();
+    v.write_u16::<LittleEndian>(self.g).unwrap();
+    v.write_u16::<LittleEndian>(self.b).unwrap();
+    v.write_u16::<LittleEndian>(self.u1).unwrap();
+    v.write_u16::<LittleEndian>(self.u2).unwrap();
     v
   }
 }
