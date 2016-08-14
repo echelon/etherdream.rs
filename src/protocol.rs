@@ -229,6 +229,25 @@ impl Broadcast {
   }
 }
 
+/** Begin command. */
+#[derive(Clone, Copy, Debug)]
+pub struct Begin {
+  /// Unused.
+  pub low_water_mark: u16,
+  /// Point Rate.
+  pub point_rate : u32,
+}
+
+impl Begin { 
+  pub fn serialize(&self) -> Vec<u8> {
+    let mut v = Vec::new();
+    v.push(0x63); // 'b'
+    v.write_u16::<LittleEndian>(self.low_water_mark).unwrap();
+    v.write_u32::<LittleEndian>(self.point_rate).unwrap();
+    v
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
