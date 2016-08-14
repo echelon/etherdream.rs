@@ -12,6 +12,10 @@ use std::io::Cursor;
 use std::io::Error;
 use std::io::ErrorKind;
 
+pub const COMMAND_BEGIN : u8   = 0x62;
+pub const COMMAND_DATA : u8    = 0x64;
+pub const COMMAND_PREPARE : u8 = 0x70;
+
 /** The DAC periodically sends state information. */
 #[derive(Clone, Copy, Debug)]
 pub struct DacStatus {
@@ -242,7 +246,7 @@ pub struct Begin {
 impl Begin { 
   pub fn serialize(&self) -> Vec<u8> {
     let mut v = Vec::new();
-    v.push(0x63); // 'b'
+    v.push(COMMAND_BEGIN); // 'b'
     v.write_u16::<LittleEndian>(self.low_water_mark).unwrap();
     v.write_u32::<LittleEndian>(self.point_rate).unwrap();
     v
