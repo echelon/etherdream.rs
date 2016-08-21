@@ -4,6 +4,7 @@
 // website, and the copyright belongs to Jacob Potter.
 // See http://ether-dream.com/protocol.html
 
+use byteorder::BigEndian;
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
@@ -16,6 +17,11 @@ pub const COMMAND_BEGIN : u8   = 0x62;
 pub const COMMAND_DATA : u8    = 0x64;
 pub const COMMAND_PING : u8    = 0x3F;
 pub const COMMAND_PREPARE : u8 = 0x70;
+
+pub const RESPONSE_ACK: u8         = 0x61;
+pub const RESPONSE_BUFFER_FULL: u8 = 0x46;
+pub const RESPONSE_INVALID_CMD: u8 = 0x49;
+pub const RESPONSE_STOP: u8        = 0x21;
 
 /** The DAC periodically sends state information. */
 #[derive(Clone, Copy, Debug)]
@@ -244,7 +250,7 @@ pub struct Begin {
   pub point_rate : u32,
 }
 
-impl Begin { 
+impl Begin {
   pub fn serialize(&self) -> Vec<u8> {
     let mut v = Vec::new();
     v.push(COMMAND_BEGIN); // 'b'
@@ -268,16 +274,16 @@ pub struct Point {
   pub u2: u16,
 }
 
-impl Point { 
+impl Point {
   /// Point CTOR.
   pub fn xy_rgb(x: i16, y: i16, r: u16, g: u16, b: u16) -> Point {
-    Point { 
+    Point {
       control: 0,
       x: x,
       y: y,
       i: 0,
       r: r,
-      g: g, 
+      g: g,
       b: b,
       u1: 0,
       u2: 0,
@@ -292,15 +298,17 @@ impl Point {
 
   pub fn serialize(&self) -> Vec<u8> {
     let mut v = Vec::new();
-    v.write_u16::<LittleEndian>(self.control).unwrap();
-    v.write_i16::<LittleEndian>(self.x).unwrap();
-    v.write_i16::<LittleEndian>(self.y).unwrap();
-    v.write_u16::<LittleEndian>(self.i).unwrap();
-    v.write_u16::<LittleEndian>(self.r).unwrap();
-    v.write_u16::<LittleEndian>(self.g).unwrap();
-    v.write_u16::<LittleEndian>(self.b).unwrap();
-    v.write_u16::<LittleEndian>(self.u1).unwrap();
-    v.write_u16::<LittleEndian>(self.u2).unwrap();
+    // TODO/FIXME: This should be LittleEndian. Why does this work only
+    // as BigEndian!?
+    v.write_u16::<BigEndian>(self.control).unwrap();
+    v.write_i16::<BigEndian>(self.x).unwrap();
+    v.write_i16::<BigEndian>(self.y).unwrap();
+    v.write_u16::<BigEndian>(self.i).unwrap();
+    v.write_u16::<BigEndian>(self.r).unwrap();
+    v.write_u16::<BigEndian>(self.g).unwrap();
+    v.write_u16::<BigEndian>(self.b).unwrap();
+    v.write_u16::<BigEndian>(self.u1).unwrap();
+    v.write_u16::<BigEndian>(self.u2).unwrap();
     v
   }
 }

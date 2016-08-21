@@ -3,6 +3,7 @@
 use std::f64;
 use std::f64::consts::PI;
 use byteorder::LittleEndian;
+use byteorder::BigEndian;
 use byteorder::WriteBytesExt;
 use protocol::Begin;
 use protocol::COMMAND_BEGIN;
@@ -10,6 +11,10 @@ use protocol::COMMAND_DATA;
 use protocol::COMMAND_PING;
 use protocol::COMMAND_PREPARE;
 use protocol::Point;
+use protocol::RESPONSE_ACK;
+use protocol::RESPONSE_BUFFER_FULL;
+use protocol::RESPONSE_INVALID_CMD;
+use protocol::RESPONSE_STOP;
 use std::io::Read;
 use std::io::Write;
 use std::net::IpAddr;
@@ -85,14 +90,19 @@ impl Dac {
   fn write_data(&mut self) {
     let num_points = 100; // TODO
 
-    let mut cmd = Vec::new();
+    let mut cmd : Vec<u8> = Vec::new();
     cmd.push(COMMAND_DATA);
-    cmd.write_u16::<LittleEndian>(num_points).unwrap();
+    // TODO/FIXME: This should be LittleEndian. Why does this work only
+    // as BigEndian!?
+    cmd.write_i16::<BigEndian>(num_points).unwrap();
 
     // TODO WRITE POINTS
     for i in 0 .. num_points {
-      //let j = ((i * 1.0f64) / num_points) * 2 * PI;
-      let pt = Point::xy_rgb(i as i16, i as i16, 255, 255, 255);
+      //let m = i as f64 * 1.0;
+      let j = ((i as f64 * 1.0f64) / num_points as f64) * 2 as f64 * PI;
+      let x = j.cos() * 100.0f64;
+      let y = j.sin() * 100.0f64;
+      let pt = Point::xy_rgb(x as i16, y as i16, 255, 255, 255);
       cmd.extend(pt.serialize());
     }
 
@@ -118,6 +128,24 @@ impl Dac {
         return;
       }
     }
+
+    match buf[0] {
+      RESPONSE_ACK => {
+        println!("Read: ACK");
+      },
+      RESPONSE_BUFFER_FULL => {
+        println!("Read: BUFFER_FULL");
+      },
+      RESPONSE_INVALID_CMD => {
+        println!("Read: INVALID_CMD");
+      },
+      RESPONSE_STOP => {
+        println!("Read: STOP");
+      },
+      _ => {
+        println!("Unknown");
+      },
+    };
 
     match buf[1] {
       COMMAND_PING => {
