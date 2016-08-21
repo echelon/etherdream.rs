@@ -14,6 +14,7 @@ use std::io::ErrorKind;
 
 pub const COMMAND_BEGIN : u8   = 0x62;
 pub const COMMAND_DATA : u8    = 0x64;
+pub const COMMAND_PING : u8    = 0x3F;
 pub const COMMAND_PREPARE : u8 = 0x70;
 
 /** The DAC periodically sends state information. */

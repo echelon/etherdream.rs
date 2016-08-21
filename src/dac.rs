@@ -7,6 +7,7 @@ use byteorder::WriteBytesExt;
 use protocol::Begin;
 use protocol::COMMAND_BEGIN;
 use protocol::COMMAND_DATA;
+use protocol::COMMAND_PING;
 use protocol::COMMAND_PREPARE;
 use protocol::Point;
 use std::io::Read;
@@ -32,6 +33,10 @@ impl Dac {
 
   // TODO TEMPORARY.
   pub fn play_demo(&mut self) {
+    //self.hello();
+    println!("Read hello");
+    self.read();
+
     println!("Send begin");
     self.begin();
 
@@ -44,19 +49,37 @@ impl Dac {
     }
   }
 
+  fn hello(&mut self) {
+    println!("Write hello");
+    let cmd = [ COMMAND_PING ];
+    self.stream.write(&cmd).unwrap(); // FIXME
+
+    println!("Read hello ack");
+    //let mut buf = [0; 2048];
+    //self.stream.read(&mut buf).unwrap(); // FIXME
+    self.read();
+  }
+
   fn prepare(&mut self) {
+    println!("Write prepare");
     let cmd = [ COMMAND_PREPARE ];
     self.stream.write(&cmd).unwrap(); // FIXME
 
-    let mut buf = [0; 2048];
-    self.stream.read(&mut buf).unwrap(); // FIXME
+    println!("Read prepare ack");
+    //let mut buf = [0; 2048];
+    //self.stream.read(&mut buf).unwrap(); // FIXME
+    self.read();
   }
 
   fn begin(&mut self) {
-    let cmd = Begin { low_water_mark: 0, point_rate: 30_000 };
+    println!("Write begin");
+    let cmd = Begin { low_water_mark: 0, point_rate: 28_500 };
     self.stream.write(&cmd.serialize()).unwrap(); // FIXME
-    let mut buf = [0; 2048];
-    self.stream.read(&mut buf).unwrap(); // FIXME
+
+    println!("Read begin ack");
+    //let mut buf = [0; 2048];
+    //self.stream.read(&mut buf).unwrap(); // FIXME
+    self.read();
   }
 
   fn write_data(&mut self) {
@@ -73,9 +96,46 @@ impl Dac {
       cmd.extend(pt.serialize());
     }
 
+    println!("Write data");
     self.stream.write(&cmd).unwrap(); // FIXME
-    let mut buf = [0; 2048];
-    self.stream.read(&mut buf).unwrap(); // FIXME
+
+    println!("Read data ack");
+    //let mut buf = [0; 2048];
+    //self.stream.read(&mut buf).unwrap(); // FIXME
+    self.read();
+  }
+
+  fn read(&mut self) {
+    println!("read() ... ");
+    //let mut buf = Vec::new();
+    let mut buf = [0; 22];
+    match self.stream.read(&mut buf) {
+      Ok(size) => {
+        println!("Read bytes: {}", size);
+      },
+      Err(_) => {
+        println!("Read error!");
+        return;
+      }
+    }
+
+    match buf[1] {
+      COMMAND_PING => {
+        println!("Read: Ping");
+      },
+      COMMAND_BEGIN => {
+        println!("Read: Begin");
+      },
+      COMMAND_DATA => {
+        println!("Read: Data");
+      },
+      COMMAND_PREPARE => {
+        println!("Read: Prepare");
+      },
+      _ => {
+        println!("Read: Unknown");
+      },
+    }
   }
 }
 
