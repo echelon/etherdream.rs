@@ -351,6 +351,7 @@ impl Begin {
 }
 
 // TODO: Docs, tests.
+/** 18-byte point data for a single point. */
 #[derive(Clone, Copy, Debug)]
 pub struct Point {
   pub control: u16,
@@ -390,15 +391,15 @@ impl Point {
     let mut v = Vec::new();
     // TODO/FIXME: This should be LittleEndian. Why does this work only
     // as BigEndian!?
-    v.write_u16::<LittleEndian>(self.control).unwrap();
-    v.write_i16::<LittleEndian>(self.x).unwrap();
-    v.write_i16::<LittleEndian>(self.y).unwrap();
-    v.write_u16::<LittleEndian>(self.i).unwrap();
-    v.write_u16::<LittleEndian>(self.r).unwrap();
-    v.write_u16::<LittleEndian>(self.g).unwrap();
-    v.write_u16::<LittleEndian>(self.b).unwrap();
-    v.write_u16::<LittleEndian>(self.u1).unwrap();
-    v.write_u16::<LittleEndian>(self.u2).unwrap();
+    v.write_u16::<BigEndian>(self.control).unwrap();
+    v.write_i16::<BigEndian>(self.x).unwrap();
+    v.write_i16::<BigEndian>(self.y).unwrap();
+    v.write_u16::<BigEndian>(self.i).unwrap();
+    v.write_u16::<BigEndian>(self.r).unwrap();
+    v.write_u16::<BigEndian>(self.g).unwrap();
+    v.write_u16::<BigEndian>(self.b).unwrap();
+    v.write_u16::<BigEndian>(self.u1).unwrap();
+    v.write_u16::<BigEndian>(self.u2).unwrap();
     v
   }
 }

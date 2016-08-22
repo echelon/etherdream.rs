@@ -41,36 +41,41 @@ impl Dac {
 
   // TODO TEMPORARY.
   pub fn play_demo(&mut self) {
+    println!("\n");
     //self.hello();
-    println!("\nRead hello");
-    self.read();
-
-    println!("\nSend begin");
-    let mut response = self.begin().unwrap();
+    let mut response = self.read_response().unwrap();
     println!("Response: {:?}", response);
 
-    if !response.is_ack() {
-      println!("Failure!");
-      return;
-    }
+    self.try_prepare(response);
 
-    println!("\nSend prepare");
-    response = self.prepare().unwrap();
-    println!("Response: {:?}", response);
-
-    if !response.is_ack() {
-      println!("Failure!");
-      return;
-    }
 
     loop {
+      let mut started = false;
+      
+      let num_points = 1799 - response.status.buffer_fullness;
+
+      println!("Sending {} points", num_points);
+
       println!("\nSend data");
-      response = self.write_data().unwrap();
+      response = self.write_data(num_points).unwrap();
       println!("Response: {:?}", response);
 
       if !response.is_ack() {
         println!("Failure!");
         return;
+      }
+
+
+      if !started {
+        println!("\nSend begin");
+        let mut response = self.begin().unwrap();
+        println!("Response: {:?}", response);
+        if !response.is_ack() {
+          println!("Failure!");
+          return;
+        }
+
+        started = true;
       }
     }
   }
@@ -108,14 +113,40 @@ impl Dac {
     self.read_response()
   }
 
-  fn write_data(&mut self) -> Result<DacResponse, io::Error> {
-    let num_points = 100; // TODO
+  fn try_prepare(&mut self, response: DacResponse) {
+    if response.status.playback_flags != 0x0 && response.status.playback_flags != 0x1 {
+      println!("\nBad playback flags, must PREPARE: {}", response.status.playback_flags);
+      println!("\nSend prepare");
+      let resp = self.prepare().unwrap();
+      println!("Response: {:?}", response);
+      if !resp.is_ack() {
+        println!("Failure!");
+        panic!("Non-ACK received");
+      }
+      return;
+    }
+
+    if response.status.playback_state == 0x2 {
+      println!("\nBad playback_state, must PREPARE: {}", response.status.playback_state);
+      println!("\nSend prepare");
+      let resp = self.prepare().unwrap();
+      println!("Response: {:?}", response);
+      if !resp.is_ack() {
+        println!("Failure!");
+        panic!("Non-ACK received");
+      }
+    }
+  }
+
+  /// Sends (3 + 18*n) bytes.
+  fn write_data(&mut self, num_points: u16) -> Result<DacResponse, io::Error> {
+    //let num_points = 10; // TODO
 
     let mut cmd : Vec<u8> = Vec::new();
     cmd.push(COMMAND_DATA);
     // TODO/FIXME: This should be LittleEndian. Why does this work only
     // as BigEndian!?
-    cmd.write_i16::<LittleEndian>(num_points).unwrap();
+    cmd.write_u16::<LittleEndian>(num_points).unwrap();
 
     // TODO WRITE POINTS
     for i in 0 .. num_points {
