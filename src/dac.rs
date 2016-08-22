@@ -6,6 +6,8 @@ use byteorder::LittleEndian;
 use byteorder::BigEndian;
 use byteorder::WriteBytesExt;
 use protocol::Begin;
+use protocol::DacStatus;
+use protocol::DacResponse;
 use protocol::COMMAND_BEGIN;
 use protocol::COMMAND_DATA;
 use protocol::COMMAND_PING;
@@ -39,17 +41,17 @@ impl Dac {
   // TODO TEMPORARY.
   pub fn play_demo(&mut self) {
     //self.hello();
-    println!("Read hello");
+    println!("\nRead hello");
     self.read();
 
-    println!("Send begin");
+    println!("\nSend begin");
     self.begin();
 
-    println!("Send prepare");
+    println!("\nSend prepare");
     self.prepare();
 
     loop {
-      println!("Send data");
+      println!("\nSend data");
       self.write_data();
     }
   }
@@ -78,7 +80,7 @@ impl Dac {
 
   fn begin(&mut self) {
     println!("Write begin");
-    let cmd = Begin { low_water_mark: 0, point_rate: 28_500 };
+    let cmd = Begin { low_water_mark: 0, point_rate: 30_000 };
     self.stream.write(&cmd.serialize()).unwrap(); // FIXME
 
     println!("Read begin ack");
@@ -94,7 +96,7 @@ impl Dac {
     cmd.push(COMMAND_DATA);
     // TODO/FIXME: This should be LittleEndian. Why does this work only
     // as BigEndian!?
-    cmd.write_i16::<BigEndian>(num_points).unwrap();
+    cmd.write_i16::<LittleEndian>(num_points).unwrap();
 
     // TODO WRITE POINTS
     for i in 0 .. num_points {
@@ -102,10 +104,12 @@ impl Dac {
       let j = ((i as f64 * 1.0f64) / num_points as f64) * 2 as f64 * PI;
       let x = j.cos() * 100.0f64;
       let y = j.sin() * 100.0f64;
-      let pt = Point::xy_rgb(x as i16, y as i16, 255, 255, 255);
+      //let pt = Point::xy_rgb(x as i16, y as i16, 255, 255, 255);
+      let pt = Point::xy_rgb(0, 0, 255, 255, 255);
       cmd.extend(pt.serialize());
     }
 
+    println!("Len: {}", cmd.len());
     println!("Write data");
     self.stream.write(&cmd).unwrap(); // FIXME
 
@@ -129,41 +133,12 @@ impl Dac {
       }
     }
 
-    match buf[0] {
-      RESPONSE_ACK => {
-        println!("Read: ACK");
-      },
-      RESPONSE_BUFFER_FULL => {
-        println!("Read: BUFFER_FULL");
-      },
-      RESPONSE_INVALID_CMD => {
-        println!("Read: INVALID_CMD");
-      },
-      RESPONSE_STOP => {
-        println!("Read: STOP");
-      },
-      _ => {
-        println!("Unknown");
-      },
-    };
+    let response = DacResponse::parse(&buf);
 
-    match buf[1] {
-      COMMAND_PING => {
-        println!("Read: Ping");
-      },
-      COMMAND_BEGIN => {
-        println!("Read: Begin");
-      },
-      COMMAND_DATA => {
-        println!("Read: Data");
-      },
-      COMMAND_PREPARE => {
-        println!("Read: Prepare");
-      },
-      _ => {
-        println!("Read: Unknown");
-      },
-    }
+    match response {
+      Ok(r) => println!("DacResponse: {:?}", r),
+      Err(e) => println!("Error: {:?}", e),
+    };
   }
 }
 

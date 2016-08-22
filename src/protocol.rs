@@ -23,6 +23,83 @@ pub const RESPONSE_BUFFER_FULL: u8 = 0x46;
 pub const RESPONSE_INVALID_CMD: u8 = 0x49;
 pub const RESPONSE_STOP: u8        = 0x21;
 
+/** A 22-byte response the DAC sends to any command. */
+#[derive(Clone, Copy, Debug)]
+pub struct DacResponse {
+  /// One byte ACK/NACK.
+  pub acknowledgement: Acknowledgement,
+
+  /// One byte repeat of the command that was received.
+  /// For sanity checking.
+  pub command : CommandCode,
+
+  /// 20-byte status of the dac.
+  pub status : DacStatus,
+}
+
+impl DacResponse {
+  /// Parse a DacResponse from a 22 byte body.
+  pub fn parse(bytes: &[u8]) -> Result<DacResponse, Error> {
+    if bytes.len() != 22 {
+      return Err(Error::new(ErrorKind::InvalidInput,
+                            "Input is not 22 bytes."));
+    }
+    match DacStatus::parse(&bytes[2..]) {
+      Err(e) => Err(e),
+      Ok(status) => {
+        Ok(DacResponse {
+          acknowledgement: Acknowledgement::parse(bytes[0]),
+          command: CommandCode::parse(bytes[1]),
+          status: status,
+        })
+      },
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Acknowledgement {
+  Ack,
+  NackBufferFull,
+  NackInvalid,
+  NackStop,
+  NackUnknown { code: u8 },
+}
+
+impl Acknowledgement {
+  pub fn parse(byte: u8) -> Acknowledgement {
+    match byte {
+      RESPONSE_ACK => Acknowledgement::Ack,
+      RESPONSE_BUFFER_FULL => Acknowledgement::NackBufferFull,
+      RESPONSE_INVALID_CMD => Acknowledgement::NackInvalid,
+      RESPONSE_STOP => Acknowledgement::NackStop,
+      _ => Acknowledgement::NackUnknown { code: byte },
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum CommandCode {
+  Begin,
+  Data,
+  Ping,
+  Prepare,
+  CommandUnknown { code: u8 },
+  // TODO: More.
+}
+
+impl CommandCode {
+  pub fn parse(byte: u8) -> CommandCode {
+    match byte {
+      COMMAND_BEGIN => CommandCode::Begin,
+      COMMAND_DATA => CommandCode::Data,
+      COMMAND_PING => CommandCode::Ping,
+      COMMAND_PREPARE => CommandCode::Prepare,
+      _ => CommandCode::CommandUnknown { code: byte },
+    }
+  }
+}
+
 /** The DAC periodically sends state information. */
 #[derive(Clone, Copy, Debug)]
 pub struct DacStatus {
@@ -300,15 +377,15 @@ impl Point {
     let mut v = Vec::new();
     // TODO/FIXME: This should be LittleEndian. Why does this work only
     // as BigEndian!?
-    v.write_u16::<BigEndian>(self.control).unwrap();
-    v.write_i16::<BigEndian>(self.x).unwrap();
-    v.write_i16::<BigEndian>(self.y).unwrap();
-    v.write_u16::<BigEndian>(self.i).unwrap();
-    v.write_u16::<BigEndian>(self.r).unwrap();
-    v.write_u16::<BigEndian>(self.g).unwrap();
-    v.write_u16::<BigEndian>(self.b).unwrap();
-    v.write_u16::<BigEndian>(self.u1).unwrap();
-    v.write_u16::<BigEndian>(self.u2).unwrap();
+    v.write_u16::<LittleEndian>(self.control).unwrap();
+    v.write_i16::<LittleEndian>(self.x).unwrap();
+    v.write_i16::<LittleEndian>(self.y).unwrap();
+    v.write_u16::<LittleEndian>(self.i).unwrap();
+    v.write_u16::<LittleEndian>(self.r).unwrap();
+    v.write_u16::<LittleEndian>(self.g).unwrap();
+    v.write_u16::<LittleEndian>(self.b).unwrap();
+    v.write_u16::<LittleEndian>(self.u1).unwrap();
+    v.write_u16::<LittleEndian>(self.u2).unwrap();
     v
   }
 }
