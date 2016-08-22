@@ -24,7 +24,8 @@ use std::net::IpAddr;
 use std::net::TcpStream;
 
 // TODO TEMP
-static mut J : u16 = 0;
+static mut J : i32 = 0;
+static DIV : i32 = 200;
 
 pub struct Dac {
   ip_address: IpAddr,
@@ -143,8 +144,6 @@ impl Dac {
 
   /// Sends (3 + 18*n) bytes.
   fn write_data(&mut self, num_points: u16) -> Result<DacResponse, io::Error> {
-    //let num_points = 10; // TODO
-
     let mut cmd : Vec<u8> = Vec::new();
     cmd.push(COMMAND_DATA);
     // TODO/FIXME: This should be LittleEndian. Why does this work only
@@ -154,12 +153,12 @@ impl Dac {
     for i in 0 .. num_points {
       // TODO TEMP
       let f = unsafe {
-        J = (J + 1) % 1_000;
+        J = (J + 1) % DIV;
         J
       };
 
       //let m = i as f64 * 1.0;
-      let j = ((f as f64 * 1.0f64) / num_points as f64) * 2 as f64 * PI;
+      let j = (f as f64 / DIV as f64) * 2 as f64 * PI;
       let x = j.cos() * 100.0f64;
       let y = j.sin() * 100.0f64;
       let pt = Point::xy_rgb(x as i16, y as i16, 255, 255, 255);
@@ -167,19 +166,15 @@ impl Dac {
       cmd.extend(pt.serialize());
     }
 
-    println!("Len: {}", cmd.len());
     println!("Write data");
     self.stream.write(&cmd).unwrap(); // FIXME
 
     println!("Read data ack");
-    //let mut buf = [0; 2048];
-    //self.stream.read(&mut buf).unwrap(); // FIXME
     self.read_response()
   }
 
   fn read(&mut self) {
     println!("read() ... ");
-    //let mut buf = Vec::new();
     let mut buf = [0; 22];
     match self.stream.read(&mut buf) {
       Ok(size) => {
