@@ -1,24 +1,25 @@
 // Copyright (c) 2016 Brandon Thomas <bt@brand.io>, <echelon@gmail.com>
 
 use std::f64;
-use std::f64::consts::PI;
-use byteorder::LittleEndian;
 use byteorder::BigEndian;
+use byteorder::LittleEndian;
 use byteorder::WriteBytesExt;
 use protocol::Begin;
-use protocol::DacStatus;
-use protocol::DacResponse;
 use protocol::COMMAND_BEGIN;
 use protocol::COMMAND_DATA;
 use protocol::COMMAND_PING;
 use protocol::COMMAND_PREPARE;
+use protocol::DacResponse;
+use protocol::DacStatus;
 use protocol::Point;
 use protocol::RESPONSE_ACK;
 use protocol::RESPONSE_BUFFER_FULL;
 use protocol::RESPONSE_INVALID_CMD;
 use protocol::RESPONSE_STOP;
+use std::f64::consts::PI;
 use std::io::Read;
 use std::io::Write;
+use std::io;
 use std::net::IpAddr;
 use std::net::TcpStream;
 
@@ -45,18 +46,36 @@ impl Dac {
     self.read();
 
     println!("\nSend begin");
-    self.begin();
+    let mut response = self.begin().unwrap();
+    println!("Response: {:?}", response);
+
+    if !response.is_ack() {
+      println!("Failure!");
+      return;
+    }
 
     println!("\nSend prepare");
-    self.prepare();
+    response = self.prepare().unwrap();
+    println!("Response: {:?}", response);
+
+    if !response.is_ack() {
+      println!("Failure!");
+      return;
+    }
 
     loop {
       println!("\nSend data");
-      self.write_data();
+      response = self.write_data().unwrap();
+      println!("Response: {:?}", response);
+
+      if !response.is_ack() {
+        println!("Failure!");
+        return;
+      }
     }
   }
 
-  fn hello(&mut self) {
+  fn hello(&mut self) -> Result<DacResponse, io::Error> {
     println!("Write hello");
     let cmd = [ COMMAND_PING ];
     self.stream.write(&cmd).unwrap(); // FIXME
@@ -64,10 +83,10 @@ impl Dac {
     println!("Read hello ack");
     //let mut buf = [0; 2048];
     //self.stream.read(&mut buf).unwrap(); // FIXME
-    self.read();
+    self.read_response()
   }
 
-  fn prepare(&mut self) {
+  fn prepare(&mut self) -> Result<DacResponse, io::Error> {
     println!("Write prepare");
     let cmd = [ COMMAND_PREPARE ];
     self.stream.write(&cmd).unwrap(); // FIXME
@@ -75,10 +94,10 @@ impl Dac {
     println!("Read prepare ack");
     //let mut buf = [0; 2048];
     //self.stream.read(&mut buf).unwrap(); // FIXME
-    self.read();
+    self.read_response()
   }
 
-  fn begin(&mut self) {
+  fn begin(&mut self) -> Result<DacResponse, io::Error> {
     println!("Write begin");
     let cmd = Begin { low_water_mark: 0, point_rate: 30_000 };
     self.stream.write(&cmd.serialize()).unwrap(); // FIXME
@@ -86,10 +105,10 @@ impl Dac {
     println!("Read begin ack");
     //let mut buf = [0; 2048];
     //self.stream.read(&mut buf).unwrap(); // FIXME
-    self.read();
+    self.read_response()
   }
 
-  fn write_data(&mut self) {
+  fn write_data(&mut self) -> Result<DacResponse, io::Error> {
     let num_points = 100; // TODO
 
     let mut cmd : Vec<u8> = Vec::new();
@@ -116,7 +135,7 @@ impl Dac {
     println!("Read data ack");
     //let mut buf = [0; 2048];
     //self.stream.read(&mut buf).unwrap(); // FIXME
-    self.read();
+    self.read_response()
   }
 
   fn read(&mut self) {
@@ -139,6 +158,20 @@ impl Dac {
       Ok(r) => println!("DacResponse: {:?}", r),
       Err(e) => println!("Error: {:?}", e),
     };
+  }
+
+  fn read_response(&mut self) -> Result<DacResponse, io::Error> {
+    println!("read_response() ... ");
+    let mut buf = [0; 22];
+
+    match self.stream.read(&mut buf) {
+      Ok(size) => {},
+      Err(e) => {
+        return Err(e);
+      },
+    }
+
+    DacResponse::parse(&buf)
   }
 }
 

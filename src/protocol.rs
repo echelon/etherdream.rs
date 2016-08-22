@@ -27,7 +27,7 @@ pub const RESPONSE_STOP: u8        = 0x21;
 #[derive(Clone, Copy, Debug)]
 pub struct DacResponse {
   /// One byte ACK/NACK.
-  pub acknowledgement: Acknowledgement,
+  pub acknowledgement: AckCode,
 
   /// One byte repeat of the command that was received.
   /// For sanity checking.
@@ -48,34 +48,27 @@ impl DacResponse {
       Err(e) => Err(e),
       Ok(status) => {
         Ok(DacResponse {
-          acknowledgement: Acknowledgement::parse(bytes[0]),
+          acknowledgement: AckCode::parse(bytes[0]),
           command: CommandCode::parse(bytes[1]),
           status: status,
         })
       },
     }
   }
+
+  /// Whether or not the response is a successful ACK.
+  pub fn is_ack(&self) -> bool {
+    self.acknowledgement.is_ack()
+  }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Acknowledgement {
+pub enum AckCode {
   Ack,
   NackBufferFull,
   NackInvalid,
   NackStop,
   NackUnknown { code: u8 },
-}
-
-impl Acknowledgement {
-  pub fn parse(byte: u8) -> Acknowledgement {
-    match byte {
-      RESPONSE_ACK => Acknowledgement::Ack,
-      RESPONSE_BUFFER_FULL => Acknowledgement::NackBufferFull,
-      RESPONSE_INVALID_CMD => Acknowledgement::NackInvalid,
-      RESPONSE_STOP => Acknowledgement::NackStop,
-      _ => Acknowledgement::NackUnknown { code: byte },
-    }
-  }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -86,6 +79,26 @@ pub enum CommandCode {
   Prepare,
   CommandUnknown { code: u8 },
   // TODO: More.
+}
+
+impl AckCode {
+  pub fn parse(byte: u8) -> AckCode {
+    match byte {
+      RESPONSE_ACK => AckCode::Ack,
+      RESPONSE_BUFFER_FULL => AckCode::NackBufferFull,
+      RESPONSE_INVALID_CMD => AckCode::NackInvalid,
+      RESPONSE_STOP => AckCode::NackStop,
+      _ => AckCode::NackUnknown { code: byte },
+    }
+  }
+
+  /// Whether or not the code is a successful ACK.
+  pub fn is_ack(&self) -> bool {
+    match *self {
+      AckCode::Ack => true,
+      _ => false,
+    }
+  }
 }
 
 impl CommandCode {
