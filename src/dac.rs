@@ -23,6 +23,9 @@ use std::io;
 use std::net::IpAddr;
 use std::net::TcpStream;
 
+// TODO TEMP
+static mut J : u16 = 0;
+
 pub struct Dac {
   ip_address: IpAddr,
   stream: TcpStream,
@@ -148,14 +151,19 @@ impl Dac {
     // as BigEndian!?
     cmd.write_u16::<LittleEndian>(num_points).unwrap();
 
-    // TODO WRITE POINTS
     for i in 0 .. num_points {
+      // TODO TEMP
+      let f = unsafe {
+        J = (J + 1) % 1_000;
+        J
+      };
+
       //let m = i as f64 * 1.0;
-      let j = ((i as f64 * 1.0f64) / num_points as f64) * 2 as f64 * PI;
+      let j = ((f as f64 * 1.0f64) / num_points as f64) * 2 as f64 * PI;
       let x = j.cos() * 100.0f64;
       let y = j.sin() * 100.0f64;
-      //let pt = Point::xy_rgb(x as i16, y as i16, 255, 255, 255);
-      let pt = Point::xy_rgb(0, 0, 255, 255, 255);
+      let pt = Point::xy_rgb(x as i16, y as i16, 255, 255, 255);
+      //let pt = Point::xy_rgb(0, 0, 255, 255, 255);
       cmd.extend(pt.serialize());
     }
 
