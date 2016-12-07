@@ -1,4 +1,5 @@
 *~
+.idea/
 Cargo.lock
+etherdream.rs.iml
 target/
-
