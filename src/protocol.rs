@@ -5,7 +5,6 @@
 // See http://ether-dream.com/protocol.html
 
 use byteorder::BigEndian;
-use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
 use byteorder::WriteBytesExt;
