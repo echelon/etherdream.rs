@@ -86,7 +86,22 @@ impl Dac {
     self.read_response()
   }
 
+  /// Clear emergency stop state.
+  fn clear_emergency_stop(&mut self) -> Result<DacResponse, io::Error> {
+    let cmd = [ 0x63u8 ]; // 'c'
+    self.stream.write(&cmd).unwrap(); // FIXME
+    self.read_response()
+  }
+
   fn try_prepare(&mut self, response: DacResponse) {
+    let response = match response.status.playback_flags {
+      0x4 => {
+        // A previous E-Stop state must be cleared.
+        self.clear_emergency_stop().unwrap() // FIXME
+      },
+      _ => response,
+    };
+
     if response.status.playback_flags != 0x0 && response.status.playback_flags != 0x1 {
       println!("\nBad playback flags, must PREPARE: {}", response.status.playback_flags);
       println!("\nSend prepare");
