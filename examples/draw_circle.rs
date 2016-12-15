@@ -5,6 +5,8 @@ extern crate etherdream;
 
 use etherdream::dac::Dac;
 use etherdream::protocol::Point;
+use etherdream::protocol::X_MAX;
+use etherdream::protocol::Y_MAX;
 use std::f64::consts::PI;
 use std::f64;
 
@@ -38,10 +40,13 @@ fn main() {
       };
 
       let j = (f as f64 / DIV as f64) * 2 as f64 * PI;
-      let x = j.cos() * 100.0f64;
-      let y = j.sin() * 100.0f64;
+      let x = j.cos() * X_MAX as f64;
+      let y = j.sin() * Y_MAX as f64;
 
-      points.push(Point::xy_rgb(x as i16, y as i16, 255, 255, 255));
+      let x = x as i16;
+      let y = y as i16;
+
+      points.push(Point::xy_binary(x, y, true));
     }
 
     points

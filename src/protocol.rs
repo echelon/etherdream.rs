@@ -4,13 +4,19 @@
 // website, and the copyright belongs to Jacob Potter.
 // See http://ether-dream.com/protocol.html
 
-use byteorder::BigEndian;
 use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
 use byteorder::WriteBytesExt;
 use std::io::Cursor;
 use std::io::Error;
 use std::io::ErrorKind;
+
+pub const COLOR_MAX : u16 = 65535;
+pub const COLOR_MIN : u16 = 0;
+pub const X_MAX : i16 = 32767;
+pub const X_MIN : i16 = -32768;
+pub const Y_MAX : i16 = 32767;
+pub const Y_MIN : i16 = -32768;
 
 pub const COMMAND_BEGIN : u8   = 0x62;
 pub const COMMAND_DATA : u8    = 0x64;
@@ -382,23 +388,21 @@ impl Point {
 
   /// Point CTOR.
   pub fn xy_binary(x: i16, y: i16, on: bool) -> Point {
-    let c = if on { 255 } else { 0 };
+    let c = if on { COLOR_MAX } else { 0 };
     Point::xy_rgb(x, y, c, c, c)
   }
 
   pub fn serialize(&self) -> Vec<u8> {
     let mut v = Vec::new();
-    // TODO/FIXME: This should be LittleEndian. Why does this work only
-    // as BigEndian!?
-    v.write_u16::<BigEndian>(self.control).unwrap();
-    v.write_i16::<BigEndian>(self.x).unwrap();
-    v.write_i16::<BigEndian>(self.y).unwrap();
-    v.write_u16::<BigEndian>(self.i).unwrap();
-    v.write_u16::<BigEndian>(self.r).unwrap();
-    v.write_u16::<BigEndian>(self.g).unwrap();
-    v.write_u16::<BigEndian>(self.b).unwrap();
-    v.write_u16::<BigEndian>(self.u1).unwrap();
-    v.write_u16::<BigEndian>(self.u2).unwrap();
+    v.write_u16::<LittleEndian>(self.control).unwrap();
+    v.write_i16::<LittleEndian>(self.x).unwrap();
+    v.write_i16::<LittleEndian>(self.y).unwrap();
+    v.write_u16::<LittleEndian>(self.i).unwrap();
+    v.write_u16::<LittleEndian>(self.r).unwrap();
+    v.write_u16::<LittleEndian>(self.g).unwrap();
+    v.write_u16::<LittleEndian>(self.b).unwrap();
+    v.write_u16::<LittleEndian>(self.u1).unwrap();
+    v.write_u16::<LittleEndian>(self.u2).unwrap();
     v
   }
 }
