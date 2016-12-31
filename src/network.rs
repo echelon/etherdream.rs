@@ -1,11 +1,12 @@
 // Copyright (c) 2016 Brandon Thomas <bt@brand.io>, <echelon@gmail.com>
 // Etherdream.rs, a library for the EtherDream laser projector DAC.
 
-use net2::UdpBuilder;
-use std::io::Error;
-use std::net::IpAddr;
+//! This module contains network-related functions unrelated to DAC control.
 
+use error::EtherdreamError;
+use net2::UdpBuilder;
 use protocol::Broadcast;
+use std::net::IpAddr;
 
 /// The primary port for communications with the EtherDream.
 pub const COMMUNICATION_PORT : u16 = 7765;
@@ -23,10 +24,9 @@ pub struct SearchResult {
   pub broadcast : Broadcast,
 }
 
-// TODO: Unsafe
 /// Blocking function that will return the first EtherDream DAC it finds
 /// via listening for UDP broadcasts.
-pub fn find_first_dac() -> Result<SearchResult, Error> {
+pub fn find_first_dac() -> Result<SearchResult, EtherdreamError> {
   let udp = UdpBuilder::new_v4()?;
   udp.reuse_address(true)?;
 

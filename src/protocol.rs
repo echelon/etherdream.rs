@@ -4,28 +4,43 @@
 // website, and the copyright belongs to Jacob Potter.
 // See http://ether-dream.com/protocol.html
 
+//! This module describes the EtherDream protocol.
+
 use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
 use byteorder::WriteBytesExt;
+use error::EtherdreamError;
 use std::io::Cursor;
-use std::io::Error;
-use std::io::ErrorKind;
 
+/// The highest value that can be specified for a single color channel.
 pub const COLOR_MAX : u16 = 65535;
+/// The lowest value that can be specified for a single color channel.
 pub const COLOR_MIN : u16 = 0;
+/// The highest x coordinate.
 pub const X_MAX : i16 = 32767;
+/// The lowest x coordinate.
 pub const X_MIN : i16 = -32768;
+/// The highest y coordinate.
 pub const Y_MAX : i16 = 32767;
+/// The lowest y coordinate.
 pub const Y_MIN : i16 = -32768;
 
+/// Byte designating the 'begin' command.
 pub const COMMAND_BEGIN : u8   = 0x62;
+/// Byte designating the 'data' command.
 pub const COMMAND_DATA : u8    = 0x64;
+/// Byte designating the 'ping' command.
 pub const COMMAND_PING : u8    = 0x3F;
+/// Byte designating the 'prepare' command.
 pub const COMMAND_PREPARE : u8 = 0x70;
 
+/// Ack byte
 pub const RESPONSE_ACK: u8         = 0x61;
+/// Nack byte - buffer full
 pub const RESPONSE_BUFFER_FULL: u8 = 0x46;
+/// Nack byte - invalid command
 pub const RESPONSE_INVALID_CMD: u8 = 0x49;
+/// Nack byte - stop
 pub const RESPONSE_STOP: u8        = 0x21;
 
 /** A 22-byte response the DAC sends to any command. */
@@ -44,10 +59,12 @@ pub struct DacResponse {
 
 impl DacResponse {
   /// Parse a DacResponse from a 22 byte body.
-  pub fn parse(bytes: &[u8]) -> Result<DacResponse, Error> {
+  pub fn parse(bytes: &[u8]) -> Result<DacResponse, EtherdreamError> {
     if bytes.len() != 22 {
-      return Err(Error::new(ErrorKind::InvalidInput,
-                            "Input is not 22 bytes."));
+      return Err(EtherdreamError::InvalidResponseLength {
+        description: format!("Response is {} bytes, not the expected 22 bytes.",
+            bytes.len()),
+      });
     }
 
     let status = DacStatus::parse(&bytes[2..])?;
@@ -65,6 +82,7 @@ impl DacResponse {
   }
 }
 
+/// Ack or Nack Responses.
 #[derive(Clone, Copy, Debug)]
 pub enum AckCode {
   Ack,
@@ -74,6 +92,7 @@ pub enum AckCode {
   NackUnknown { code: u8 },
 }
 
+/// EtherDream Commands.
 #[derive(Clone, Copy, Debug)]
 pub enum CommandCode {
   Begin,
@@ -223,10 +242,12 @@ pub struct DacStatus {
 
 impl DacStatus {
   /// Parse a DacStatus from raw bytes. DacStatuses are 20 bytes.
-  pub fn parse(bytes: &[u8]) -> Result<DacStatus, Error> {
+  pub fn parse(bytes: &[u8]) -> Result<DacStatus, EtherdreamError> {
     if bytes.len() < 20 {
-      return Err(Error::new(ErrorKind::InvalidInput,
-                            "input is fewer than 20 bytes"));
+      return Err(EtherdreamError::InvalidResponseLength {
+        description: format!("Response is {} bytes; must be no fewer than 20.",
+          bytes.len()),
+      });
     }
 
     let mut reader = Cursor::new(&bytes[4..20]);
@@ -270,10 +291,12 @@ pub struct MacAddress {
 
 impl MacAddress {
   /// Parse a MacAddress from raw bytes. MacAddresses are 6 bytes.
-  pub fn parse(bytes: &[u8]) -> Result<MacAddress, Error> {
+  pub fn parse(bytes: &[u8]) -> Result<MacAddress, EtherdreamError> {
     if bytes.len() < 6 {
-      return Err(Error::new(ErrorKind::InvalidInput,
-                            "input is fewer than 6 bytes"));
+      return Err(EtherdreamError::InvalidResponseLength {
+        description: format!("MacAddress is {} bytes; must be no fewer than 6.",
+          bytes.len()),
+      });
     }
 
     Ok(MacAddress {
@@ -303,10 +326,12 @@ pub struct Broadcast {
 
 impl Broadcast {
   /// Parse a Broadcast from raw bytes. Broadcasts are 36 bytes.
-  pub fn parse(bytes: &[u8]) -> Result<Broadcast, Error> {
+  pub fn parse(bytes: &[u8]) -> Result<Broadcast, EtherdreamError> {
     if bytes.len() < 36 {
-      return Err(Error::new(ErrorKind::InvalidInput,
-                            "input is fewer than 36 bytes"));
+      return Err(EtherdreamError::InvalidResponseLength {
+        description: format!("Broadcast is {} bytes; must be no fewer than 36.",
+          bytes.len()),
+      });
     }
 
     let mut reader = Cursor::new(&bytes[6..32]);
