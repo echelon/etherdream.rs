@@ -362,10 +362,10 @@ pub struct Point {
   pub control: u16,
   pub x: i16,
   pub y: i16,
-  pub i: u16,
   pub r: u16,
   pub g: u16,
   pub b: u16,
+  pub i: u16,
   pub u1: u16,
   pub u2: u16,
 }
@@ -377,10 +377,10 @@ impl Point {
       control: 0,
       x: x,
       y: y,
-      i: 0,
       r: r,
       g: g,
       b: b,
+      i: 0,
       u1: 0,
       u2: 0,
     }
@@ -393,14 +393,16 @@ impl Point {
   }
 
   pub fn serialize(&self) -> Vec<u8> {
+    // NB: Website documentation is incorrect about byte order: the "rgb" color
+    // channels each come before "i".
     let mut v = Vec::new();
     v.write_u16::<LittleEndian>(self.control).unwrap();
     v.write_i16::<LittleEndian>(self.x).unwrap();
     v.write_i16::<LittleEndian>(self.y).unwrap();
-    v.write_u16::<LittleEndian>(self.i).unwrap();
     v.write_u16::<LittleEndian>(self.r).unwrap();
     v.write_u16::<LittleEndian>(self.g).unwrap();
     v.write_u16::<LittleEndian>(self.b).unwrap();
+    v.write_u16::<LittleEndian>(self.i).unwrap();
     v.write_u16::<LittleEndian>(self.u1).unwrap();
     v.write_u16::<LittleEndian>(self.u2).unwrap();
     v
@@ -483,6 +485,33 @@ mod tests {
     assert_eq!(255, broadcast.sw_revision);
     assert_eq!(513, broadcast.buffer_capacity);
     assert_eq!(67305985, broadcast.max_point_rate);
+  }
+
+  #[test]
+  fn test_point_xy_rgb() {
+    let point = Point::xy_rgb(10_000, -10_000, 32, 128, 1028);
+    assert_eq!(10_000, point.x);
+    assert_eq!(-10_000, point.y);
+    assert_eq!(32, point.r);
+    assert_eq!(128, point.g);
+    assert_eq!(1028, point.b);
+  }
+
+  #[test]
+  fn test_point_xy_binary() {
+    let point = Point::xy_binary(20_000, -20_000, true);
+    assert_eq!(20_000, point.x);
+    assert_eq!(-20_000, point.y);
+    assert_eq!(65535, point.r);
+    assert_eq!(65535, point.g);
+    assert_eq!(65535, point.b);
+
+    let point = Point::xy_binary(1000, 2000, false);
+    assert_eq!(1000, point.x);
+    assert_eq!(2000, point.y);
+    assert_eq!(0, point.r);
+    assert_eq!(0, point.g);
+    assert_eq!(0, point.b);
   }
 }
 
