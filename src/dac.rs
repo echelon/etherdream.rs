@@ -15,6 +15,7 @@ use std::io::Read;
 use std::io::Write;
 use std::net::IpAddr;
 use std::net::TcpStream;
+use std::time::Duration;
 
 /// An EtherDream DAC.
 /// Controls what we display on the projector.
@@ -27,6 +28,11 @@ impl Dac {
   /// CTOR.
   pub fn new(ip_address: IpAddr) -> Dac {
     let stream = TcpStream::connect((ip_address, 7765u16)).unwrap(); // FIXME
+
+    // These should be reasonable timeouts for any arbitrary laser show.
+    stream.set_read_timeout(Some(Duration::from_millis(500))).unwrap(); // FIXME
+    stream.set_write_timeout(Some(Duration::from_millis(500))).unwrap();
+
     Dac {
       ip_address: ip_address,
       stream: stream,
