@@ -387,6 +387,28 @@ impl Point {
   }
 
   /// Point CTOR.
+  /// Use the same intensity value for all color channels.
+  pub fn xy_luma(x: i16, y: i16, luminance: u16) -> Point {
+    Point {
+      control: 0,
+      x: x,
+      y: y,
+      r: luminance,
+      g: luminance,
+      b: luminance,
+      i: luminance,
+      u1: 0,
+      u2: 0,
+    }
+  }
+
+  /// Blank point CTOR.
+  pub fn xy_blank(x: i16, y: i16) -> Point {
+    Point::xy_luma(x, y, 0)
+  }
+
+  /// Point CTOR.
+  /// If set to on, the lasers are at full power. Otherwise, they're off.
   pub fn xy_binary(x: i16, y: i16, on: bool) -> Point {
     let c = if on { COLOR_MAX } else { 0 };
     Point::xy_rgb(x, y, c, c, c)
@@ -495,6 +517,29 @@ mod tests {
     assert_eq!(32, point.r);
     assert_eq!(128, point.g);
     assert_eq!(1028, point.b);
+    assert_eq!(0, point.i);
+  }
+
+  #[test]
+  fn test_point_xy_luma() {
+    let point = Point::xy_luma(5, -5, 127);
+    assert_eq!(5, point.x);
+    assert_eq!(-5, point.y);
+    assert_eq!(127, point.r);
+    assert_eq!(127, point.g);
+    assert_eq!(127, point.b);
+    assert_eq!(127, point.i);
+  }
+
+  #[test]
+  fn test_point_xy_blank() {
+    let point = Point::xy_blank(10, -20);
+    assert_eq!(10, point.x);
+    assert_eq!(-20, point.y);
+    assert_eq!(0, point.r);
+    assert_eq!(0, point.g);
+    assert_eq!(0, point.b);
+    assert_eq!(0, point.i);
   }
 
   #[test]
