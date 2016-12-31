@@ -27,15 +27,15 @@ pub struct SearchResult {
 /// Blocking function that will return the first EtherDream DAC it finds
 /// via listening for UDP broadcasts.
 pub fn find_first_dac() -> Result<SearchResult, Error> {
-  let udp = try!(UdpBuilder::new_v4());
-  try!(udp.reuse_address(true));
+  let udp = UdpBuilder::new_v4()?;
+  udp.reuse_address(true)?;
 
-  let socket = try!(udp.bind(("0.0.0.0", BROADCAST_PORT)));
+  let socket = udp.bind(("0.0.0.0", BROADCAST_PORT))?;
 
   let mut buf = [0u8; 128];
-  let result = try!(socket.recv_from(&mut buf));
+  let result = socket.recv_from(&mut buf)?;
 
-  let broadcast = try!(Broadcast::parse(&buf[0..36]));
+  let broadcast = Broadcast::parse(&buf[0..36])?;
 
   Ok(SearchResult {
     ip_address : result.1.ip(),

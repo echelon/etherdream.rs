@@ -49,16 +49,14 @@ impl DacResponse {
       return Err(Error::new(ErrorKind::InvalidInput,
                             "Input is not 22 bytes."));
     }
-    match DacStatus::parse(&bytes[2..]) {
-      Err(e) => Err(e),
-      Ok(status) => {
-        Ok(DacResponse {
-          acknowledgement: AckCode::parse(bytes[0]),
-          command: CommandCode::parse(bytes[1]),
-          status: status,
-        })
-      },
-    }
+
+    let status = DacStatus::parse(&bytes[2..])?;
+
+    Ok(DacResponse {
+      acknowledgement: AckCode::parse(bytes[0]),
+      command: CommandCode::parse(bytes[1]),
+      status: status,
+    })
   }
 
   /// Whether or not the response is a successful ACK.
@@ -238,12 +236,12 @@ impl DacStatus {
       light_engine_state : bytes[1],
       playback_state     : bytes[2],
       source             : bytes[3],
-      light_engine_flags : try!(reader.read_u16::<LittleEndian>()),
-      playback_flags     : try!(reader.read_u16::<LittleEndian>()),
-      source_flags       : try!(reader.read_u16::<LittleEndian>()),
-      buffer_fullness    : try!(reader.read_u16::<LittleEndian>()),
-      point_rate         : try!(reader.read_u32::<LittleEndian>()),
-      point_count        : try!(reader.read_u32::<LittleEndian>()),
+      light_engine_flags : reader.read_u16::<LittleEndian>()?,
+      playback_flags     : reader.read_u16::<LittleEndian>()?,
+      source_flags       : reader.read_u16::<LittleEndian>()?,
+      buffer_fullness    : reader.read_u16::<LittleEndian>()?,
+      point_rate         : reader.read_u32::<LittleEndian>()?,
+      point_count        : reader.read_u32::<LittleEndian>()?,
     })
   }
 
@@ -313,12 +311,12 @@ impl Broadcast {
 
     let mut reader = Cursor::new(&bytes[6..32]);
     Ok(Broadcast {
-      mac_address     : try!(MacAddress::parse(bytes)),
-      hw_revision     : try!(reader.read_u16::<LittleEndian>()),
-      sw_revision     : try!(reader.read_u16::<LittleEndian>()),
-      buffer_capacity : try!(reader.read_u16::<LittleEndian>()),
-      max_point_rate  : try!(reader.read_u32::<LittleEndian>()),
-      status          : try!(DacStatus::parse(&bytes[16..36])),
+      mac_address     : MacAddress::parse(bytes)?,
+      hw_revision     : reader.read_u16::<LittleEndian>()?,
+      sw_revision     : reader.read_u16::<LittleEndian>()?,
+      buffer_capacity : reader.read_u16::<LittleEndian>()?,
+      max_point_rate  : reader.read_u32::<LittleEndian>()?,
+      status          : DacStatus::parse(&bytes[16..36])?,
     })
   }
 
