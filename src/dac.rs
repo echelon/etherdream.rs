@@ -94,8 +94,16 @@ impl Dac {
   }
 
   fn try_prepare(&mut self, response: DacResponse) {
+    // Documentation for playback_flags:
+    // [0]: Emergency stop occurred due to E-Stop packet or invalid command.
+    // [1]: Emergency stop occurred due to E-Stop input to projector.
+    // [2]: Emergency stop input to projector is currently active.
+    // [3]: Emergency stop occurred due to overtemperature condition.
+    // [4]: Overtemperature condition is currently active.
+    // [5]: Emergency stop occurred due to loss of Ethernet link.
+    // [15:5]: Future use.
     let response = match response.status.playback_flags {
-      0x4 => {
+      0x1 | 0x2 | 0x4 | 0x6 => {
         // A previous E-Stop state must be cleared.
         self.clear_emergency_stop().unwrap() // FIXME
       },
@@ -106,7 +114,7 @@ impl Dac {
       println!("\nBad playback flags, must PREPARE: {}", response.status.playback_flags);
       println!("\nSend prepare");
       let resp = self.prepare().unwrap();
-      println!("Response: {:?}", response);
+      println!("Response: {:?}", resp);
       if !resp.is_ack() {
         println!("Failure!");
         panic!("Non-ACK received");
@@ -118,7 +126,7 @@ impl Dac {
       println!("\nBad playback_state, must PREPARE: {}", response.status.playback_state);
       println!("\nSend prepare");
       let resp = self.prepare().unwrap();
-      println!("Response: {:?}", response);
+      println!("Response: {:?}", resp);
       if !resp.is_ack() {
         println!("Failure!");
         panic!("Non-ACK received");
@@ -158,4 +166,3 @@ impl Dac {
     DacResponse::parse(&buf)
   }
 }
-
