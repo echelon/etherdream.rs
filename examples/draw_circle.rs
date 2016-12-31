@@ -31,7 +31,7 @@ fn main() {
 
   static mut pos: i32 = 0;
 
-  dac.play_function(|num_points: u16| {
+  let _r = dac.play_function(|num_points: u16| {
     let mut points = Vec::new();
     for _i in 0 .. num_points {
       let f = unsafe {

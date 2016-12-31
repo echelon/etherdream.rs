@@ -61,7 +61,7 @@ impl DacResponse {
   /// Parse a DacResponse from a 22 byte body.
   pub fn parse(bytes: &[u8]) -> Result<DacResponse, EtherdreamError> {
     if bytes.len() != 22 {
-      return Err(EtherdreamError::InvalidResponseLength {
+      return Err(EtherdreamError::BadResponseLength {
         description: format!("Response is {} bytes, not the expected 22 bytes.",
             bytes.len()),
       });
@@ -93,7 +93,7 @@ pub enum AckCode {
 }
 
 /// EtherDream Commands.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CommandCode {
   Begin,
   Data,
@@ -244,7 +244,7 @@ impl DacStatus {
   /// Parse a DacStatus from raw bytes. DacStatuses are 20 bytes.
   pub fn parse(bytes: &[u8]) -> Result<DacStatus, EtherdreamError> {
     if bytes.len() < 20 {
-      return Err(EtherdreamError::InvalidResponseLength {
+      return Err(EtherdreamError::BadResponseLength {
         description: format!("Response is {} bytes; must be no fewer than 20.",
           bytes.len()),
       });
@@ -293,7 +293,7 @@ impl MacAddress {
   /// Parse a MacAddress from raw bytes. MacAddresses are 6 bytes.
   pub fn parse(bytes: &[u8]) -> Result<MacAddress, EtherdreamError> {
     if bytes.len() < 6 {
-      return Err(EtherdreamError::InvalidResponseLength {
+      return Err(EtherdreamError::BadResponseLength {
         description: format!("MacAddress is {} bytes; must be no fewer than 6.",
           bytes.len()),
       });
@@ -328,7 +328,7 @@ impl Broadcast {
   /// Parse a Broadcast from raw bytes. Broadcasts are 36 bytes.
   pub fn parse(bytes: &[u8]) -> Result<Broadcast, EtherdreamError> {
     if bytes.len() < 36 {
-      return Err(EtherdreamError::InvalidResponseLength {
+      return Err(EtherdreamError::BadResponseLength {
         description: format!("Broadcast is {} bytes; must be no fewer than 36.",
           bytes.len()),
       });

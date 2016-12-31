@@ -3,6 +3,8 @@
 
 //! Library errors
 
+use protocol::AckCode;
+use protocol::CommandCode;
 use std::error::Error;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -13,7 +15,7 @@ use std::io::Error as IoError;
 #[derive(Debug)]
 pub enum EtherdreamError {
   /// Invalid length for an Etherdream response.
-  InvalidResponseLength {
+  BadResponseLength {
     /// Description of the error.
     description: String,
   },
@@ -21,16 +23,25 @@ pub enum EtherdreamError {
   IoError {
     /// Cause of the error.
     cause: IoError,
-  }
+  },
+  /// Received a NACK from the EtherDream in response to a command.
+  ReceivedNack {
+    /// Type of NACK received.
+    code: AckCode,
+    /// The command the NACK was in response to.
+    command: CommandCode,
+  },
+  /// We received a response for the wrong command.
+  WrongResponse, // TODO: Encode more information in error?
 }
 
 impl Error for EtherdreamError {
   fn description(&self) -> &str {
     match *self {
-      EtherdreamError::InvalidResponseLength { .. } => {
-        "InvalidResponseLength"
-      },
+      EtherdreamError::BadResponseLength { .. } => "BadResponseLength",
       EtherdreamError::IoError { .. } => "IoError",
+      EtherdreamError::ReceivedNack { .. } => "ReceivedNack",
+      EtherdreamError::WrongResponse => "WrongResponse",
     }
   }
 }
