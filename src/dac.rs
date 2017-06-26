@@ -48,6 +48,7 @@ impl Dac {
   /// The function takes the number of points it needs to generate.
   pub fn play_function<F>(&mut self, mut make_points: F)
       -> Result<(), EtherdreamError> where F: FnMut(u16) -> Vec<Point> {
+    // Read initial hello message from DAC.
     let mut response = self.read_response()?;
 
     self.try_prepare(response);
