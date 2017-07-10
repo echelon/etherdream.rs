@@ -1,6 +1,6 @@
 [package]
   name = "etherdream"
-  version = "0.0.6"
+  version = "0.0.7"
   authors = [ "Brandon Thomas <bt@brand.io>", "Brandon Thomas <echelon@gmail.com>" ]
   description = "An EtherDream (laser projector DAC) library."
   keywords = [ "EtherDream", "laser", "projector", "ether", "dream" ]
@@ -18,4 +18,7 @@
   ilda = "0.0.2"
   log = "0.3.*"
   net2 = "0.2.*"
+
+[badges]
+  travis-ci = { repository = "echelon/etherdream.rs" }
 
