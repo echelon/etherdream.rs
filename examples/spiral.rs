@@ -42,7 +42,10 @@ fn main() {
   let _r = dac.play_function(|num_points: u16| {
     let mut points = Vec::new();
     for _i in 0 .. num_points {
+
+      // TODO: Let's build this into etherdream.rs
       // Get the current point along the beam.
+      // TODO: Also, let's create a `dac.play_stream(S: Stream)`.
       let f = unsafe {
         pos = (pos + 1) % (BLANKING_POINTS + SPIRAL_POINTS);
         pos
