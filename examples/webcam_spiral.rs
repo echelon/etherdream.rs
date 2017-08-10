@@ -15,6 +15,8 @@ use std::f64::consts::PI;
 use std::f64;
 use image::ImageBuffer;
 use image::Rgb;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 /// Number of points along the spiral to sample.
 static SPIRAL_POINTS : i32 = 1000;
@@ -26,8 +28,13 @@ static BLANKING_POINTS : i32 = 20;
 static SPIRAL_GROWTH : f64 = 14.0;
 static MAX_RADIUS : f64 = 326.0;
 
+type Image = ImageBuffer<Rgb<u8>, Frame>;
+
 fn main() {
-  let (sender, receiver) = std::sync::mpsc::channel();
+  let frame_buffer : Arc<RwLock<Option<Image>>> = Arc::new(RwLock::new(None));
+  let fb = frame_buffer.clone();
+
+  //let (sender, receiver) = std::sync::mpsc::channel();
 
   let webcam_thread = std::thread::spawn(move || {
     let cam = camera_capture::create(0).expect("Could not open webcam.")
@@ -38,14 +45,19 @@ fn main() {
         .start()
         .expect("Could not begin webcam.");
     for frame in cam {
-      if let Err(_) = sender.send(frame) {
+      /*if let Err(_) = sender.send(frame) {
         break;
+      }*/
+      match fb.write() {
+        Err(_) => {},
+        Ok(mut w) => {
+          *w = Some(frame);
+        }
       }
     }
   });
 
   println!("Searching for DAC...");
-
 
   let ip_addr = match etherdream::network::find_first_dac() {
     Err(e) => {
@@ -64,11 +76,10 @@ fn main() {
   static mut pos: i32 = 0;
 
   let _r = dac.play_function(|num_points: u16| {
-    let frame = receiver.try_recv();
+    //let frame = receiver.try_recv();
     let mut points = Vec::new();
 
     for _i in 0 .. num_points {
-
       // TODO: Let's build this into etherdream.rs
       // Get the current point along the beam.
       // TODO: Also, let's create a `dac.play_stream(S: Stream)`.
@@ -77,28 +88,42 @@ fn main() {
         pos
       };
 
-      if f < SPIRAL_POINTS {
-        let (x, y) = get_spiral_point(f);
+      match frame_buffer.read() {
+        Err(_) => {},
+        Ok(r) => {
+          match *r {
+            None => {
+              if f < SPIRAL_POINTS {
+                let (x, y) = get_spiral_point(f);
+                points.push(Point::xy_binary(x, y, false));
+              } else {
+                let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
+                points.push(Point::xy_binary(x, y, false));
+              }
+            },
+            Some(ref frame) => {
 
-        match frame.as_ref() {
-          Ok(frame) => {
-            let (r, g, b) = laser_color_from_webcam(&frame, x, y);
-            points.push(Point::xy_rgb(x, y, r, b, b));
-          },
-          Err(_) => {
-            points.push(Point::xy_binary(x, y, false));
+              if f < SPIRAL_POINTS {
+                let (x, y) = get_spiral_point(f);
+                let (r, g, b) = laser_color_from_webcam(&frame, x, y);
+                points.push(Point::xy_rgb(x, y, r, b, b));
+              } else {
+                let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
+                points.push(Point::xy_binary(x, y, false));
+              }
+
+            },
           }
-        }
-      } else {
-        let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
-        points.push(Point::xy_binary(x, y, false));
+        },
       }
+
+
     }
 
     points
   });
 
-  drop(receiver);
+  //drop(receiver);
   webcam_thread.join().unwrap();
 }
 
@@ -118,7 +143,7 @@ fn get_blanking_point(cursor: i32) -> (i16, i16) {
   (x as i16, y as i16)
 }
 
-fn laser_color_from_webcam(image: &ImageBuffer<Rgb<u8>, Frame>, 
+fn laser_color_from_webcam(image: &Image, 
                            x: i16, y: i16) -> (u16, u16, u16) {
 
   fn webcam_coord(laser_coord: i16) -> u32 {
