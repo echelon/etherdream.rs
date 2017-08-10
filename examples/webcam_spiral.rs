@@ -1,0 +1,155 @@
+// Copyright (c) 2017 Brandon Thomas <bt@brand.io>, <echelon@gmail.com>
+// Etherdream.rs, a library for the EtherDream laser projector DAC.
+
+extern crate camera_capture;
+extern crate etherdream;
+extern crate image;
+
+use etherdream::dac::Dac;
+use etherdream::protocol::Point;
+use etherdream::protocol::X_MAX;
+use etherdream::protocol::Y_MAX;
+use etherdream::protocol::COLOR_MAX;
+use camera_capture::Frame;
+use std::f64::consts::PI;
+use std::f64;
+use image::ImageBuffer;
+use image::Rgb;
+
+/// Number of points along the spiral to sample.
+static SPIRAL_POINTS : i32 = 1000;
+
+/// Number of points to blank from spiral's edge to center.
+static BLANKING_POINTS : i32 = 20;
+
+/// Other parameters.
+static SPIRAL_GROWTH : f64 = 14.0;
+static MAX_RADIUS : f64 = 326.0;
+
+fn main() {
+  let (sender, receiver) = std::sync::mpsc::channel();
+
+  let webcam_thread = std::thread::spawn(move || {
+    let cam = camera_capture::create(0).expect("Could not open webcam.")
+        .fps(30.0)
+        .expect("Unsupported webcam fps.")
+        .resolution(640, 480) // TODO param
+        .expect("Unsupported webcam resolution.")
+        .start()
+        .expect("Could not begin webcam.");
+    for frame in cam {
+      if let Err(_) = sender.send(frame) {
+        break;
+      }
+    }
+  });
+
+  println!("Searching for DAC...");
+
+
+  let ip_addr = match etherdream::network::find_first_dac() {
+    Err(e) => {
+      println!("Could not find DAC because of error: {}", e);
+      std::process::exit(0);
+    },
+    Ok(result) => {
+      println!("Found DAC at IP: {}", result.ip_address);
+      println!("Broadcast: {:?}", result.broadcast);
+      result.ip_address
+    },
+  };
+
+  let mut dac = Dac::new(ip_addr);
+
+  static mut pos: i32 = 0;
+
+  let _r = dac.play_function(|num_points: u16| {
+    let frame = receiver.try_recv();
+    let mut points = Vec::new();
+
+    for _i in 0 .. num_points {
+
+      // TODO: Let's build this into etherdream.rs
+      // Get the current point along the beam.
+      // TODO: Also, let's create a `dac.play_stream(S: Stream)`.
+      let f = unsafe {
+        pos = (pos + 1) % (BLANKING_POINTS + SPIRAL_POINTS);
+        pos
+      };
+
+      if f < SPIRAL_POINTS {
+        let (x, y) = get_spiral_point(f);
+
+        match frame.as_ref() {
+          Ok(frame) => {
+            let (r, g, b) = laser_color_from_webcam(&frame, x, y);
+            points.push(Point::xy_rgb(x, y, r, b, b));
+          },
+          Err(_) => {
+            points.push(Point::xy_binary(x, y, false));
+          }
+        }
+      } else {
+        let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
+        points.push(Point::xy_binary(x, y, false));
+      }
+    }
+
+    points
+  });
+
+  drop(receiver);
+  webcam_thread.join().unwrap();
+}
+
+fn get_spiral_point(cursor: i32) -> (i16, i16) {
+  let i = (cursor as f64) / SPIRAL_POINTS as f64 * 2.0 * PI * SPIRAL_GROWTH;
+  // Spirals are of the form A * x * trig(x), where A is constant.
+  let x = i * i.cos() * MAX_RADIUS;
+  let y = i * i.sin() * MAX_RADIUS;
+  (x as i16, y as i16)
+}
+
+fn get_blanking_point(cursor: i32) -> (i16, i16) {
+  // Get the outermost spiral point.
+  let (end_x, end_y) = get_spiral_point(SPIRAL_POINTS);
+  let x = end_x as f64 - end_x as f64 * cursor as f64 / BLANKING_POINTS as f64;
+  let y = end_y as f64 - end_y as f64 * cursor as f64 / BLANKING_POINTS as f64;
+  (x as i16, y as i16)
+}
+
+fn laser_color_from_webcam(image: &ImageBuffer<Rgb<u8>, Frame>, 
+                           x: i16, y: i16) -> (u16, u16, u16) {
+
+  fn webcam_coord(laser_coord: i16) -> u32 {
+    laser_coord as u32 // TODO
+  }
+
+  fn expand(color: u8) -> u16 {
+    (color as u16) * 257 // or the incorrect: (color as u16) << 8
+  }    
+
+  // -32768, 32767
+  // to 
+  // 0, 4294967295
+  // but really
+  // 0, img.width()
+  //
+  let x_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
+  let w_x = (x_range * image.width() as f64) as u32;
+
+  let y_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
+  let w_y = (y_range * image.height() as f64) as u32;
+
+  println!("xy: {}, {}", w_x, w_y);
+  let pix = image.get_pixel(w_x, w_y);
+
+  //println!("Pixel: {:?}", pix);
+
+  let r = expand(pix.data[0]);
+  let g = expand(pix.data[1]);
+  let b = expand(pix.data[2]);
+
+  (r, g, b)
+}
+

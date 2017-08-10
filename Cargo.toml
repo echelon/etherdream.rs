@@ -22,3 +22,10 @@
 [badges]
   travis-ci = { repository = "echelon/etherdream.rs" }
 
+#[[example]]
+#  name = "webcam_spiral"
+
+[dev_dependencies]
+  camera_capture = "0.3"
+  image = "0.7"
+
