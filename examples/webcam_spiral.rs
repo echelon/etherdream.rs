@@ -19,14 +19,15 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 /// Number of points along the spiral to sample.
-static SPIRAL_POINTS : i32 = 1000;
+static SPIRAL_POINTS : i32 = 1500;
 
 /// Number of points to blank from spiral's edge to center.
 static BLANKING_POINTS : i32 = 20;
 
 /// Other parameters.
-static SPIRAL_GROWTH : f64 = 14.0;
-static MAX_RADIUS : f64 = 326.0;
+static SPIRAL_GROWTH : f64 = 4.0;
+static MIN_RADIUS: f64 = 500.0;
+static MAX_RADIUS : f64 = 30000.0;
 
 type Image = ImageBuffer<Rgb<u8>, Frame>;
 
@@ -40,7 +41,7 @@ fn main() {
     let cam = camera_capture::create(0).expect("Could not open webcam.")
         .fps(30.0)
         .expect("Unsupported webcam fps.")
-        .resolution(640, 480) // TODO param
+        .resolution(320, 240) // TODO param
         .expect("Unsupported webcam resolution.")
         .start()
         .expect("Could not begin webcam.");
@@ -128,10 +129,13 @@ fn main() {
 }
 
 fn get_spiral_point(cursor: i32) -> (i16, i16) {
-  let i = (cursor as f64) / SPIRAL_POINTS as f64 * 2.0 * PI * SPIRAL_GROWTH;
+  // TODO: FIX THIS MATH.
+  let i = (cursor as f64) / SPIRAL_POINTS as f64;
+  let t = i * 2.0 * PI * SPIRAL_GROWTH * 10.0;
+  let r = MAX_RADIUS as f64 * i;
   // Spirals are of the form A * x * trig(x), where A is constant.
-  let x = i * i.cos() * MAX_RADIUS;
-  let y = i * i.sin() * MAX_RADIUS;
+  let x = t.cos() * r;
+  let y = t.sin() * r;
   (x as i16, y as i16)
 }
 
@@ -151,7 +155,8 @@ fn laser_color_from_webcam(image: &Image,
   }
 
   fn expand(color: u8) -> u16 {
-    (color as u16) * 257 // or the incorrect: (color as u16) << 8
+    //(color as u16) * 257 // or the incorrect: (color as u16) << 8
+    (color as u16) << 8
   }    
 
   // -32768, 32767
@@ -166,7 +171,6 @@ fn laser_color_from_webcam(image: &Image,
   let y_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
   let w_y = (y_range * image.height() as f64) as u32;
 
-  println!("xy: {}, {}", w_x, w_y);
   let pix = image.get_pixel(w_x, w_y);
 
   //println!("Pixel: {:?}", pix);
@@ -174,6 +178,8 @@ fn laser_color_from_webcam(image: &Image,
   let r = expand(pix.data[0]);
   let g = expand(pix.data[1]);
   let b = expand(pix.data[2]);
+
+  //println!("xy: {}, {} | rgb: {}, {}, {}", w_x, w_y, r, g, b);
 
   (r, g, b)
 }
