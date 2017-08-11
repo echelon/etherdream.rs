@@ -1,7 +1,7 @@
 // Copyright (c) 2017 Brandon Thomas <bt@brand.io>, <echelon@gmail.com>
 // Etherdream.rs, a library for the EtherDream laser projector DAC.
 //! webcam_spiral.rs
-//! This example reads in raster images captured from a webcam and uses 
+//! This example reads in raster images captured from a webcam and uses
 //! them to map colors onto a projected spiral.
 
 extern crate camera_capture;
@@ -10,12 +10,9 @@ extern crate image;
 
 use camera_capture::Frame;
 use etherdream::dac::Dac;
-use etherdream::protocol::COLOR_MAX;
 use etherdream::protocol::Point;
 use etherdream::protocol::X_MAX;
 use etherdream::protocol::X_MIN;
-use etherdream::protocol::Y_MAX;
-use etherdream::protocol::Y_MIN;
 use image::ImageBuffer;
 use image::Rgb;
 use std::f64::consts::PI;
@@ -31,31 +28,25 @@ static BLANKING_POINTS : i32 = 20;
 
 /// Other parameters.
 static SPIRAL_GROWTH : f64 = 4.0;
-static MIN_RADIUS: f64 = 500.0;
 static MAX_RADIUS : f64 = 30000.0;
 
 type Image = ImageBuffer<Rgb<u8>, Frame>;
 
 fn main() {
   let frame_buffer : Arc<RwLock<Option<Image>>> = Arc::new(RwLock::new(None));
-  let fb = frame_buffer.clone();
-
-  //let (sender, receiver) = std::sync::mpsc::channel();
+  let frame_buffer2 = frame_buffer.clone();
 
   let webcam_thread = std::thread::spawn(move || {
     let cam = camera_capture::create(0).expect("Could not open webcam.")
         .fps(30.0)
         .expect("Unsupported webcam fps.")
-        .resolution(320, 240) // TODO param
+        .resolution(320, 240) // TODO: Make parameters.
         .expect("Unsupported webcam resolution.")
         .start()
         .expect("Could not begin webcam.");
     for frame in cam {
-      /*if let Err(_) = sender.send(frame) {
-        break;
-      }*/
-      match fb.write() {
-        Err(_) => {},
+      match frame_buffer2.write() {
+        Err(_) => println!("Error reading frame from webcam."),
         Ok(mut w) => {
           *w = Some(frame);
         }
@@ -79,51 +70,43 @@ fn main() {
 
   let mut dac = Dac::new(ip_addr);
 
-  static mut pos: i32 = 0;
+  static mut pos: i32 = 0; // Position in the spiral.
 
   let _r = dac.play_function(|num_points: u16| {
-    //let frame = receiver.try_recv();
     let mut points = Vec::new();
 
     for _i in 0 .. num_points {
-      // TODO: Let's build this into etherdream.rs
       // Get the current point along the beam.
+      // TODO: Let's build this into etherdream.rs
       // TODO: Also, let's create a `dac.play_stream(S: Stream)`.
       let f = unsafe {
         pos = (pos + 1) % (BLANKING_POINTS + SPIRAL_POINTS);
         pos
       };
 
+      if f >= SPIRAL_POINTS {
+        // Track back from end of spiral to origin.
+        let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
+        points.push(Point::xy_binary(x, y, false));
+        continue;
+      }
+
       match frame_buffer.read() {
-        Err(_) => {},
-        Ok(r) => {
-          match *r {
+        Err(_) => println!("Cannot obtain read lock"),
+        Ok(maybe_frame) => {
+          match *maybe_frame {
             None => {
-              if f < SPIRAL_POINTS {
-                let (x, y) = get_spiral_point(f);
-                points.push(Point::xy_binary(x, y, false));
-              } else {
-                let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
-                points.push(Point::xy_binary(x, y, false));
-              }
+              let (x, y) = get_spiral_point(f);
+              points.push(Point::xy_binary(x, y, false));
             },
             Some(ref frame) => {
-
-              if f < SPIRAL_POINTS {
-                let (x, y) = get_spiral_point(f);
-                let (r, g, b) = laser_color_from_webcam(&frame, x, y);
-                points.push(Point::xy_rgb(x, y, r, g, b));
-              } else {
-                let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
-                points.push(Point::xy_binary(x, y, false));
-              }
-
+              let (x, y) = get_spiral_point(f);
+              let (r, g, b) = laser_color_from_webcam(&frame, x, y);
+              points.push(Point::xy_rgb(x, y, r, g, b));
             },
           }
         },
       }
-
-
     }
 
     points
@@ -151,12 +134,12 @@ fn get_blanking_point(cursor: i32) -> (i16, i16) {
   (x as i16, y as i16)
 }
 
-fn laser_color_from_webcam(image: &Image, 
+fn laser_color_from_webcam(image: &Image,
                            x: i16, y: i16) -> (u16, u16, u16) {
 
   fn map_point(laser_position: i16, image_scale: u32) -> u32 {
     // NB: X_MIN and X_MAX are same values for the Y dimension.
-    let num = laser_position as f64 - X_MIN as f64; 
+    let num = laser_position as f64 - X_MIN as f64;
     let denom = X_MAX as f64 - X_MIN as f64;
     let ratio = num / denom;
     let scale = image_scale as f64; // "scale" is width or height.
@@ -180,7 +163,7 @@ fn laser_color_from_webcam(image: &Image,
     } else {
       (color as u16) * 257
     }
-  }    
+  }
 
   let w_x = webcam_x(x, image.width());
   let w_y = webcam_y(y, image.height());
