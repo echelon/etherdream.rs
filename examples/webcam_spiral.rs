@@ -8,7 +8,9 @@ extern crate image;
 use etherdream::dac::Dac;
 use etherdream::protocol::Point;
 use etherdream::protocol::X_MAX;
+use etherdream::protocol::X_MIN;
 use etherdream::protocol::Y_MAX;
+use etherdream::protocol::Y_MIN;
 use etherdream::protocol::COLOR_MAX;
 use camera_capture::Frame;
 use std::f64::consts::PI;
@@ -107,7 +109,7 @@ fn main() {
               if f < SPIRAL_POINTS {
                 let (x, y) = get_spiral_point(f);
                 let (r, g, b) = laser_color_from_webcam(&frame, x, y);
-                points.push(Point::xy_rgb(x, y, r, b, b));
+                points.push(Point::xy_rgb(x, y, r, g, b));
               } else {
                 let (x, y) = get_blanking_point(f - SPIRAL_POINTS);
                 points.push(Point::xy_binary(x, y, false));
@@ -150,13 +152,40 @@ fn get_blanking_point(cursor: i32) -> (i16, i16) {
 fn laser_color_from_webcam(image: &Image, 
                            x: i16, y: i16) -> (u16, u16, u16) {
 
+  fn webcam_x(laser_x: i16, image_width: u32) -> u32 {
+    let num = laser_x as f64 - X_MIN as f64;
+    let denom = X_MAX as f64 - X_MIN as f64;
+    let ratio = num / denom;
+    //println!("Ratio: {}", ratio);
+    let scale = image_width as f64;
+    let result = ratio * scale;
+    result as u32
+  }
+
+  fn webcam_y(laser_y: i16, image_height : u32) -> u32 {
+    let laser_y = laser_y * -1; // Inverted
+    let num = laser_y as f64 - Y_MIN as f64;
+    let denom = X_MAX as f64 - Y_MIN as f64;
+    let ratio = num / denom;
+    //println!("Ratio: {}", ratio);
+    let scale = image_height as f64;
+    let result = ratio * scale;
+    result as u32
+  }
+
   fn webcam_coord(laser_coord: i16) -> u32 {
     laser_coord as u32 // TODO
   }
 
   fn expand(color: u8) -> u16 {
+    //(color as u16) << 8
     //(color as u16) * 257 // or the incorrect: (color as u16) << 8
-    (color as u16) << 8
+    // Dithering
+    if color < 100 {
+      0
+    } else {
+      (color as u16) * 257 // or the incorrect: (color as u16) << 8
+    }
   }    
 
   // -32768, 32767
@@ -165,11 +194,17 @@ fn laser_color_from_webcam(image: &Image,
   // but really
   // 0, img.width()
   //
-  let x_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
-  let w_x = (x_range * image.width() as f64) as u32;
+  //let x_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
+  //let w_x = (x_range * image.width() as f64) as u32;
 
-  let y_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
-  let w_y = (y_range * image.height() as f64) as u32;
+  //let y_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
+  //let w_y = (y_range * image.height() as f64) as u32;
+  
+  //println!("x, y: {}, {}", x, y);
+  let w_x = webcam_x(x, image.width());
+  let w_y = webcam_y(y, image.height());
+
+  //println!("w_x, w_y: {}, {}", w_x, w_y);
 
   let pix = image.get_pixel(w_x, w_y);
 
@@ -179,7 +214,10 @@ fn laser_color_from_webcam(image: &Image,
   let g = expand(pix.data[1]);
   let b = expand(pix.data[2]);
 
-  //println!("xy: {}, {} | rgb: {}, {}, {}", w_x, w_y, r, g, b);
+
+  /*if x % 10 == 0 {
+    println!("xy: {}, {} | rgb: {}, {}, {}", w_x, w_y, r, g, b);
+  }*/
 
   (r, g, b)
 }
