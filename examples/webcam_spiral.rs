@@ -1,22 +1,25 @@
 // Copyright (c) 2017 Brandon Thomas <bt@brand.io>, <echelon@gmail.com>
 // Etherdream.rs, a library for the EtherDream laser projector DAC.
+//! webcam_spiral.rs
+//! This example reads in raster images captured from a webcam and uses 
+//! them to map colors onto a projected spiral.
 
 extern crate camera_capture;
 extern crate etherdream;
 extern crate image;
 
+use camera_capture::Frame;
 use etherdream::dac::Dac;
+use etherdream::protocol::COLOR_MAX;
 use etherdream::protocol::Point;
 use etherdream::protocol::X_MAX;
 use etherdream::protocol::X_MIN;
 use etherdream::protocol::Y_MAX;
 use etherdream::protocol::Y_MIN;
-use etherdream::protocol::COLOR_MAX;
-use camera_capture::Frame;
-use std::f64::consts::PI;
-use std::f64;
 use image::ImageBuffer;
 use image::Rgb;
+use std::f64::consts::PI;
+use std::f64;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -126,12 +129,11 @@ fn main() {
     points
   });
 
-  //drop(receiver);
   webcam_thread.join().unwrap();
 }
 
 fn get_spiral_point(cursor: i32) -> (i16, i16) {
-  // TODO: FIX THIS MATH.
+  // FIXME: The spiral math is convoluted and unintuitive.
   let i = (cursor as f64) / SPIRAL_POINTS as f64;
   let t = i * 2.0 * PI * SPIRAL_GROWTH * 10.0;
   let r = MAX_RADIUS as f64 * i;
@@ -152,72 +154,42 @@ fn get_blanking_point(cursor: i32) -> (i16, i16) {
 fn laser_color_from_webcam(image: &Image, 
                            x: i16, y: i16) -> (u16, u16, u16) {
 
-  fn webcam_x(laser_x: i16, image_width: u32) -> u32 {
-    let num = laser_x as f64 - X_MIN as f64;
+  fn map_point(laser_position: i16, image_scale: u32) -> u32 {
+    // NB: X_MIN and X_MAX are same values for the Y dimension.
+    let num = laser_position as f64 - X_MIN as f64; 
     let denom = X_MAX as f64 - X_MIN as f64;
     let ratio = num / denom;
-    //println!("Ratio: {}", ratio);
-    let scale = image_width as f64;
+    let scale = image_scale as f64; // "scale" is width or height.
     let result = ratio * scale;
     result as u32
+  }
+
+  fn webcam_x(laser_x: i16, image_width: u32) -> u32 {
+    map_point(laser_x, image_width)
   }
 
   fn webcam_y(laser_y: i16, image_height : u32) -> u32 {
     let laser_y = laser_y * -1; // Inverted
-    let num = laser_y as f64 - Y_MIN as f64;
-    let denom = X_MAX as f64 - Y_MIN as f64;
-    let ratio = num / denom;
-    //println!("Ratio: {}", ratio);
-    let scale = image_height as f64;
-    let result = ratio * scale;
-    result as u32
+    map_point(laser_y, image_height)
   }
 
-  fn webcam_coord(laser_coord: i16) -> u32 {
-    laser_coord as u32 // TODO
-  }
-
-  fn expand(color: u8) -> u16 {
-    //(color as u16) << 8
-    //(color as u16) * 257 // or the incorrect: (color as u16) << 8
-    // Dithering
+  fn expand_color(color: u8) -> u16 {
+    // Thresholding gives a sharper image / "dithering" effect.
     if color < 100 {
       0
     } else {
-      (color as u16) * 257 // or the incorrect: (color as u16) << 8
+      (color as u16) * 257
     }
   }    
 
-  // -32768, 32767
-  // to 
-  // 0, 4294967295
-  // but really
-  // 0, img.width()
-  //
-  //let x_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
-  //let w_x = (x_range * image.width() as f64) as u32;
-
-  //let y_range : f64 = (x as i32 + 32768) as f64 / 65536.0;
-  //let w_y = (y_range * image.height() as f64) as u32;
-  
-  //println!("x, y: {}, {}", x, y);
   let w_x = webcam_x(x, image.width());
   let w_y = webcam_y(y, image.height());
 
-  //println!("w_x, w_y: {}, {}", w_x, w_y);
-
   let pix = image.get_pixel(w_x, w_y);
 
-  //println!("Pixel: {:?}", pix);
-
-  let r = expand(pix.data[0]);
-  let g = expand(pix.data[1]);
-  let b = expand(pix.data[2]);
-
-
-  /*if x % 10 == 0 {
-    println!("xy: {}, {} | rgb: {}, {}, {}", w_x, w_y, r, g, b);
-  }*/
+  let r = expand_color(pix.data[0]);
+  let g = expand_color(pix.data[1]);
+  let b = expand_color(pix.data[2]);
 
   (r, g, b)
 }
