@@ -12,11 +12,18 @@
 
 extern crate byteorder;
 extern crate net2;
+extern crate point as pointlib;
 
 mod error;
 
 pub mod dac;
 pub mod network;
 pub mod protocol;
+
+pub mod point {
+  pub use pointlib::PipelinePoint;
+  pub use pointlib::SimplePoint;
+  pub use protocol::Point;
+}
 
 pub use error::EtherdreamError;
