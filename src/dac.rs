@@ -101,15 +101,21 @@ impl Dac {
         cmd.write_u16::<LittleEndian>(0)?; // Control
         cmd.write_i16::<LittleEndian>(point.x as i16)?;
         cmd.write_i16::<LittleEndian>(point.y as i16)?;
+
         if point.is_blank {
           cmd.write_u16::<LittleEndian>(0)?;
           cmd.write_u16::<LittleEndian>(0)?;
           cmd.write_u16::<LittleEndian>(0)?;
         } else {
-          cmd.write_u16::<LittleEndian>(point.r as u16)?;
-          cmd.write_u16::<LittleEndian>(point.g as u16)?;
-          cmd.write_u16::<LittleEndian>(point.b as u16)?;
+          // TODO/FIXME:
+          //cmd.write_u16::<LittleEndian>(point.r as u16)?;
+          //cmd.write_u16::<LittleEndian>(point.g as u16)?;
+          //cmd.write_u16::<LittleEndian>(point.b as u16)?;
+          cmd.write_u16::<LittleEndian>(65535)?;
+          cmd.write_u16::<LittleEndian>(65535)?;
+          cmd.write_u16::<LittleEndian>(65535)?;
         }
+
         cmd.write_u16::<LittleEndian>(0)?; // i
         cmd.write_u16::<LittleEndian>(0)?; // u1
         cmd.write_u16::<LittleEndian>(0)?; // u2

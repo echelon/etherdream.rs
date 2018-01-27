@@ -444,9 +444,11 @@ impl Point {
     v.write_u16::<LittleEndian>(self.control).unwrap();
     v.write_i16::<LittleEndian>(self.x).unwrap();
     v.write_i16::<LittleEndian>(self.y).unwrap();
+
     v.write_u16::<LittleEndian>(self.r).unwrap();
     v.write_u16::<LittleEndian>(self.g).unwrap();
     v.write_u16::<LittleEndian>(self.b).unwrap();
+
     v.write_u16::<LittleEndian>(self.i).unwrap();
     v.write_u16::<LittleEndian>(self.u1).unwrap();
     v.write_u16::<LittleEndian>(self.u2).unwrap();
