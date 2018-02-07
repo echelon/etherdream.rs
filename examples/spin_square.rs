@@ -5,6 +5,7 @@ extern crate etherdream;
 
 use etherdream::dac::Dac;
 use etherdream::point::PipelinePoint;
+use etherdream::point::Point;
 use etherdream::protocol::X_MAX;
 use etherdream::protocol::Y_MAX;
 use std::f64::consts::PI;
@@ -65,18 +66,20 @@ impl Square {
     }
   }
 
-  fn get_points(&self, points: &mut Vec<PipelinePoint>, num_points: u16,
-                pos: i32) {
-
+  fn get_points(&self, num_points: u16, pos: i32) -> Vec<PipelinePoint> {
+    let mut points = Vec::with_capacity(num_points as usize);
     let num_points = num_points as usize;
-    let mut i = pos as usize % self.prototype.len();
+    //let mut i = pos as usize % self.prototype.len();
 
     while points.len() < num_points {
-      let point = self.prototype.get(i).unwrap().clone(); // FIXME LAZINESS
-      points.push(point);
+      //let point = self.prototype.get(i).unwrap().clone(); // FIXME LAZINESS
+      //points.push(point);
+      points.push(PipelinePoint::xy_binary(0.0, 0.0, true));
 
-      i = (i + 1) % self.prototype.len();
+      //i = (i + 1) % self.prototype.len();
     }
+
+    points
   }
 }
 
@@ -97,9 +100,10 @@ fn main() {
 
   let mut dac = Dac::new(ip_addr);
 
-  let mut square = Arc::new(RwLock::new(Square::new(1000, 200)));
+  let mut square = Arc::new(RwLock::new(Square::new(5000, 300)));
   let mut square2 = square.clone();
 
+  // le animation thread.
   thread::spawn(move || {
     loop {
       match square.write() {
@@ -121,7 +125,7 @@ fn main() {
     match square2.read() {
       Err(_) => {},
       Ok(ref square) => {
-        square.get_points(&mut points, num_points, pos);
+        points = square.get_points(num_points, pos);
       }
     }
 
