@@ -74,7 +74,7 @@ impl Square {
     while points.len() < num_points {
       //let point = self.prototype.get(i).unwrap().clone(); // FIXME LAZINESS
       //points.push(point);
-      points.push(PipelinePoint::xy_binary(0.0, 0.0, true));
+      points.push(PipelinePoint::xy_binary(10_000.0, 10_000.0, true));
 
       //i = (i + 1) % self.prototype.len();
     }
