@@ -60,23 +60,23 @@ impl Square {
     Square {
       x_coordinate: 0.0,
       y_coordinate: 0.0,
-      side: 5_000.0,
+      side: side as f32,
       theta: 0.0,
       prototype,
     }
   }
 
-  fn get_points(&self, num_points: u16, pos: i32) -> Vec<PipelinePoint> {
+  fn get_points(&self, num_points: u16, pos: u32) -> Vec<PipelinePoint> {
     let mut points = Vec::with_capacity(num_points as usize);
     let num_points = num_points as usize;
-    //let mut i = pos as usize % self.prototype.len();
+    let mut i = pos as usize % self.prototype.len();
 
     while points.len() < num_points {
-      //let point = self.prototype.get(i).unwrap().clone(); // FIXME LAZINESS
-      //points.push(point);
-      points.push(PipelinePoint::xy_binary(10_000.0, 10_000.0, true));
+      let point = self.prototype.get(i).unwrap().clone(); // FIXME LAZINESS
+      points.push(point);
 
-      //i = (i + 1) % self.prototype.len();
+      i = (i + 1) % self.prototype.len();
+      println!("i: {}", i);
     }
 
     points
@@ -100,7 +100,7 @@ fn main() {
 
   let mut dac = Dac::new(ip_addr);
 
-  let mut square = Arc::new(RwLock::new(Square::new(5000, 300)));
+  let mut square = Arc::new(RwLock::new(Square::new(10_000, 300)));
   let mut square2 = square.clone();
 
   // le animation thread.
@@ -117,7 +117,7 @@ fn main() {
     }
   });
 
-  let mut pos: i32 = 0;
+  let mut pos: u32 = 0;
 
   let _r = dac.stream_pipeline_points(|num_points: u16| {
     let mut points = Vec::with_capacity(num_points as usize);
@@ -126,6 +126,7 @@ fn main() {
       Err(_) => {},
       Ok(ref square) => {
         points = square.get_points(num_points, pos);
+        pos = pos + (points.len() as u32);
       }
     }
 
