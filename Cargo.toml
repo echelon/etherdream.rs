@@ -1,6 +1,6 @@
 [package]
   name = "etherdream"
-  version = "0.1.0"
+  version = "0.1.1"
   authors = [ "Brandon Thomas <bt@brand.io>", "Brandon Thomas <echelon@gmail.com>" ]
   description = "An EtherDream (laser projector DAC) library."
   keywords = [ "EtherDream", "laser", "projector", "ether", "dream" ]
