@@ -23,7 +23,3 @@
 [badges]
   travis-ci = { repository = "echelon/etherdream.rs" }
 
-[dev_dependencies]
-  camera_capture = "0.3"
-  image = "0.7"
-
