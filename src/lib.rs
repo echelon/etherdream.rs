@@ -7,8 +7,9 @@
 //! interesting points.
 
 // TODO: Enable #![warn(missing_docs)]
-#![warn(unused_extern_crates)]
-#![warn(unused_qualifications)]
+#![deny(unused_extern_crates)]
+#![deny(unused_imports)]
+#![deny(unused_qualifications)]
 
 extern crate byteorder;
 extern crate net2;
